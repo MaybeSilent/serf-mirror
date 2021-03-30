@@ -31,7 +31,7 @@ func main() {
 		HelpFunc: cli.BasicHelpFunc("serf"),
 	}
 
-	exitCode, err := cli.Run()
+	exitCode, err := cli.Run() // 处理相关的命令方法
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error executing CLI: %s\n", err.Error())
 		os.Exit(1)

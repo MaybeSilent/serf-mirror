@@ -101,7 +101,7 @@ func (c *Command) readConfig() *Config {
 		false,
 		"disable message compression for broadcasting events",
 	)
-
+	// 相关的广播时间配置
 	cmdFlags.StringVar(&broadcastTimeout, "broadcast-timeout", "", "timeout for broadcast messages")
 	if err := cmdFlags.Parse(c.args); err != nil {
 		return nil
@@ -109,7 +109,7 @@ func (c *Command) readConfig() *Config {
 
 	cmdConfig.EnableCompression = !disableCompression
 
-	// Parse any command line tag values
+	// Parse any command line tag values tag相关的配置
 	tagValues, err := UnmarshalTags(tags)
 	if err != nil {
 		c.Ui.Error(fmt.Sprintf("Error: %s", err))
@@ -118,7 +118,7 @@ func (c *Command) readConfig() *Config {
 	cmdConfig.Tags = tagValues
 
 	// Decode the retry interval if given
-	if retryInterval != "" {
+	if retryInterval != "" { // 重试时间间隔
 		dur, err := time.ParseDuration(retryInterval)
 		if err != nil {
 			c.Ui.Error(fmt.Sprintf("Error: %s", err))
@@ -128,7 +128,7 @@ func (c *Command) readConfig() *Config {
 	}
 
 	// Decode the broadcast timeout if given
-	if broadcastTimeout != "" {
+	if broadcastTimeout != "" { // 配置广播超时时间
 		dur, err := time.ParseDuration(broadcastTimeout)
 		if err != nil {
 			c.Ui.Error(fmt.Sprintf("Error: %s", err))
@@ -137,7 +137,7 @@ func (c *Command) readConfig() *Config {
 		cmdConfig.BroadcastTimeout = dur
 	}
 
-	config := DefaultConfig()
+	config := DefaultConfig() // 获取默认配置，包括绑定地址等
 	if len(configFiles) > 0 {
 		fileConfig, err := ReadConfigPaths(configFiles)
 		if err != nil {
@@ -150,7 +150,7 @@ func (c *Command) readConfig() *Config {
 
 	config = MergeConfig(config, &cmdConfig)
 
-	if config.NodeName == "" {
+	if config.NodeName == "" { // 如果为空或默认获取当前主机名
 		hostname, err := os.Hostname()
 		if err != nil {
 			c.Ui.Error(fmt.Sprintf("Error determining hostname: %s", err))
@@ -159,7 +159,7 @@ func (c *Command) readConfig() *Config {
 		config.NodeName = hostname
 	}
 
-	eventScripts := config.EventScripts()
+	eventScripts := config.EventScripts() // 获取event handler的处理脚本文件
 	for _, script := range eventScripts {
 		if !script.Valid() {
 			c.Ui.Error(fmt.Sprintf("Invalid event script: %s", script.String()))
@@ -179,7 +179,7 @@ func (c *Command) readConfig() *Config {
 		config.Tags["role"] = config.Role
 	}
 
-	// Check for sane retry interval
+	// Check for sane retry interval // 最小重试时间为1s
 	if config.RetryInterval < minRetryInterval {
 		config.RetryInterval = minRetryInterval
 		c.Ui.Output(fmt.Sprintf("Warning: 'RetryInterval' is too low. Setting to %v", config.RetryInterval))
@@ -187,13 +187,13 @@ func (c *Command) readConfig() *Config {
 
 	// Check for sane broadcast timeout
 	if config.BroadcastTimeout < minBroadcastTimeout {
-		config.BroadcastTimeout = minBroadcastTimeout
+		config.BroadcastTimeout = minBroadcastTimeout // 超时时间最小设置为1s
 		c.Ui.Output(fmt.Sprintf("Warning: 'BroadcastTimeout' is too low. Setting to %v",
 			config.BroadcastTimeout))
 	}
 
 	// Check snapshot file is provided if we have RejoinAfterLeave
-	if config.RejoinAfterLeave && config.SnapshotPath == "" {
+	if config.RejoinAfterLeave && config.SnapshotPath == "" { // 快照用于恢复
 		c.Ui.Output("Warning: 'RejoinAfterLeave' enabled without snapshot file")
 	}
 
@@ -202,7 +202,7 @@ func (c *Command) readConfig() *Config {
 
 // setupAgent is used to create the agent we use
 func (c *Command) setupAgent(config *Config, logOutput io.Writer) *Agent {
-	bindIP, bindPort, err := config.AddrParts(config.BindAddr)
+	bindIP, bindPort, err := config.AddrParts(config.BindAddr) // 获取绑定地址的IP与端口号
 	if err != nil {
 		c.Ui.Error(fmt.Sprintf("Invalid bind address: %s", err))
 		return nil
@@ -287,7 +287,7 @@ func (c *Command) setupAgent(config *Config, logOutput io.Writer) *Agent {
 
 	var advertiseIP string
 	var advertisePort int
-	if config.AdvertiseAddr != "" {
+	if config.AdvertiseAddr != "" {  // 默认配置为空
 		advertiseIP, advertisePort, err = config.AddrParts(config.AdvertiseAddr)
 		if err != nil {
 			c.Ui.Error(fmt.Sprintf("Invalid advertise address: %s", err))
@@ -301,8 +301,8 @@ func (c *Command) setupAgent(config *Config, logOutput io.Writer) *Agent {
 		return nil
 	}
 
-	serfConfig := serf.DefaultConfig()
-	switch config.Profile {
+	serfConfig := serf.DefaultConfig() // 获取serf的默认配置
+	switch config.Profile { // 默认配置为局域网lan
 	case "lan":
 		serfConfig.MemberlistConfig = memberlist.DefaultLANConfig()
 	case "wan":
@@ -411,7 +411,7 @@ func (c *Command) startAgent(config *Config, agent *Agent,
 		Scripts:  config.EventScripts(),
 		Logger:   log.New(logOutput, "", log.LstdFlags),
 	}
-	agent.RegisterEventHandler(c.scriptHandler)
+	agent.RegisterEventHandler(c.scriptHandler) // 注册配置的handler处理脚本
 
 	// Start the agent after the handler is registered
 	if err := agent.Start(); err != nil {
@@ -420,11 +420,11 @@ func (c *Command) startAgent(config *Config, agent *Agent,
 	}
 
 	// Parse the bind address information
-	bindIP, bindPort, err := config.AddrParts(config.BindAddr)
+	bindIP, bindPort, err := config.AddrParts(config.BindAddr) // 解析绑定地址
 	bindAddr := &net.TCPAddr{IP: net.ParseIP(bindIP), Port: bindPort}
 
 	// Start the discovery layer
-	if config.Discover != "" {
+	if config.Discover != "" {  // 启动服务发现层
 		// Use the advertise addr and port
 		local := agent.Serf().Memberlist().LocalNode()
 
@@ -441,7 +441,7 @@ func (c *Command) startAgent(config *Config, agent *Agent,
 	}
 
 	// Setup the RPC listener
-	rpcListener, err := net.Listen("tcp", config.RPCAddr)
+	rpcListener, err := net.Listen("tcp", config.RPCAddr)   // 监听RPC地址
 	if err != nil {
 		c.Ui.Error(fmt.Sprintf("Error starting RPC listener: %s", err))
 		return nil
@@ -449,7 +449,7 @@ func (c *Command) startAgent(config *Config, agent *Agent,
 
 	// Start the IPC layer
 	c.Ui.Output("Starting Serf agent RPC...")
-	ipc := NewAgentIPC(agent, config.RPCAuthKey, rpcListener, logOutput, logWriter)
+	ipc := NewAgentIPC(agent, config.RPCAuthKey, rpcListener, logOutput, logWriter) // 创建ipc间交互的实例，在其中进行监听
 
 	c.Ui.Output("Serf agent running!")
 	c.Ui.Info(fmt.Sprintf("                  Node name: '%s'", config.NodeName))
@@ -475,7 +475,7 @@ func (c *Command) startAgent(config *Config, agent *Agent,
 
 // startupJoin is invoked to handle any joins specified to take place at start time
 func (c *Command) startupJoin(config *Config, agent *Agent) error {
-	if len(config.StartJoin) == 0 {
+	if len(config.StartJoin) == 0 { // 启动时需要join的集群
 		return nil
 	}
 
@@ -532,7 +532,7 @@ func (c *Command) Run(args []string) int {
 
 	// Parse our configs
 	c.args = args
-	config := c.readConfig()
+	config := c.readConfig() // 读取相关的配置，包括默认配置与配置文件或者命令行传入的配置
 	if config == nil {
 		return 1
 	}
@@ -548,7 +548,7 @@ func (c *Command) Run(args []string) int {
 		Aggregate on 10 second intervals for 1 minute. Expose the
 		metrics over stderr when there is a SIGUSR1 received.
 	*/
-	inm := metrics.NewInmemSink(10*time.Second, time.Minute)
+	inm := metrics.NewInmemSink(10*time.Second, time.Minute) // 初始化相关监控配置
 	metrics.DefaultInmemSignal(inm)
 	metricsConf := metrics.DefaultConfig("serf-agent")
 
@@ -594,7 +594,7 @@ func (c *Command) Run(args []string) int {
 	if ipc == nil {
 		return 1
 	}
-	defer ipc.Shutdown()
+	defer ipc.Shutdown() // 关闭资源，打开的监听端口等
 
 	// Join startup nodes if specified
 	if err := c.startupJoin(config, agent); err != nil {
@@ -609,10 +609,10 @@ func (c *Command) Run(args []string) int {
 
 	// Start the retry joins
 	retryJoinCh := make(chan struct{})
-	go c.retryJoin(config, agent, retryJoinCh)
+	go c.retryJoin(config, agent, retryJoinCh) //
 
 	// Wait for exit
-	return c.handleSignals(config, agent, retryJoinCh)
+	return c.handleSignals(config, agent, retryJoinCh) // 等待退出的系统信号
 }
 
 // handleSignals blocks until we get an exit-causing signal

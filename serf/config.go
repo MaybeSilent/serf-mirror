@@ -82,8 +82,9 @@ type Config struct {
 	// seconds, then the events will be coalesced and dispatched if no
 	// new events are received within 2 seconds of the last event. Otherwise,
 	// every event will always be delayed by at least 10 seconds.
-	CoalescePeriod  time.Duration
-	QuiescentPeriod time.Duration
+	// 事件的聚合
+	CoalescePeriod  time.Duration // 聚合的时间间隔
+	QuiescentPeriod time.Duration // 新事件刷新的时间间隔
 
 	// The settings below relate to Serf's user event coalescing feature.
 	// The settings operate like above but only affect user messages and
@@ -211,7 +212,7 @@ type Config struct {
 	// as lamport clock values. When Serf is started with a snapshot,
 	// it will attempt to join all the previously known nodes until one
 	// succeeds and will also avoid replaying old user events.
-	SnapshotPath string
+	SnapshotPath string // serf存储了镜像所在的地址
 
 	// RejoinAfterLeave controls our interaction with the snapshot file.
 	// When set to false (default), a leave causes a Serf to not rejoin

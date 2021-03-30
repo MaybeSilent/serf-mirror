@@ -251,11 +251,11 @@ func DefaultLANConfig() *Config {
 		SuspicionMult:           4,                      // Suspect a node for 4 * log(N+1) * Interval
 		SuspicionMaxTimeoutMult: 6,                      // For 10k nodes this will give a max timeout of 120 seconds
 		PushPullInterval:        30 * time.Second,       // Low frequency
-		ProbeTimeout:            500 * time.Millisecond, // Reasonable RTT time for LAN
-		ProbeInterval:           1 * time.Second,        // Failure check every second
+		ProbeTimeout:            500 * time.Millisecond, // Reasonable RTT time for LAN // 错误检查超时时间
+		ProbeInterval:           1 * time.Second,        // Failure check every second  // 错误检查时间间隔
 		DisableTcpPings:         false,                  // TCP pings are safe, even with mixed versions
 		AwarenessMaxMultiplier:  8,                      // Probe interval backs off to 8 seconds
-
+		// GOSSIP协议的相关配置
 		GossipNodes:          3,                      // Gossip to 3 nodes
 		GossipInterval:       200 * time.Millisecond, // Gossip more rapidly
 		GossipToTheDeadTime:  30 * time.Second,       // Same as push/pull
@@ -277,14 +277,14 @@ func DefaultLANConfig() *Config {
 // DefaultWANConfig works like DefaultConfig, however it returns a configuration
 // that is optimized for most WAN environments. The default configuration is
 // still very conservative and errs on the side of caution.
-func DefaultWANConfig() *Config {
+func DefaultWANConfig() *Config { // 根据lan的策略，在广域网的情况下做了相应的配置优化
 	conf := DefaultLANConfig()
 	conf.TCPTimeout = 30 * time.Second
 	conf.SuspicionMult = 6
 	conf.PushPullInterval = 60 * time.Second
 	conf.ProbeTimeout = 3 * time.Second
 	conf.ProbeInterval = 5 * time.Second
-	conf.GossipNodes = 4 // Gossip less frequently, but to an additional node
+	conf.GossipNodes = 4 // Gossip less frequently, but to an additional node // GOSSIP更多节点，但是GOSSIP的时间间隔更久
 	conf.GossipInterval = 500 * time.Millisecond
 	conf.GossipToTheDeadTime = 60 * time.Second
 	return conf
@@ -293,7 +293,7 @@ func DefaultWANConfig() *Config {
 // DefaultLocalConfig works like DefaultConfig, however it returns a configuration
 // that is optimized for a local loopback environments. The default configuration is
 // still very conservative and errs on the side of caution.
-func DefaultLocalConfig() *Config {
+func DefaultLocalConfig() *Config { // 针对本地的回环地址进行了优化，定制了相关的配置
 	conf := DefaultLANConfig()
 	conf.TCPTimeout = time.Second
 	conf.IndirectChecks = 1

@@ -267,10 +267,10 @@ func Create(conf *Config) (*Serf, error) {
 	serf := &Serf{
 		config:        conf,
 		logger:        logger,
-		members:       make(map[string]*memberState),
-		queryResponse: make(map[LamportTime]*QueryResponse),
-		shutdownCh:    make(chan struct{}),
-		state:         SerfAlive,
+		members:       make(map[string]*memberState),			// 成员，成员状态
+		queryResponse: make(map[LamportTime]*QueryResponse),	// 查询结果
+		shutdownCh:    make(chan struct{}), // 关闭节点
+		state:         SerfAlive, // serf节点状态
 	}
 	serf.eventJoinIgnore.Store(false)
 
@@ -288,14 +288,14 @@ func Create(conf *Config) (*Serf, error) {
 			lastEvents:   make(map[string]EventType),
 			latestEvents: make(map[string]coalesceEvent),
 		}
-
+		// 支持事件聚合
 		conf.EventCh = coalescedEventCh(conf.EventCh, serf.shutdownCh,
 			conf.CoalescePeriod, conf.QuiescentPeriod, c)
 	}
 
 	// Check if user event coalescing is enabled
 	if conf.UserCoalescePeriod > 0 && conf.UserQuiescentPeriod > 0 && conf.EventCh != nil {
-		c := &userEventCoalescer{
+		c := &userEventCoalescer{ // user事件聚合
 			events: make(map[string]*latestUserEvents),
 		}
 
@@ -313,7 +313,7 @@ func Create(conf *Config) (*Serf, error) {
 	conf.EventCh = outCh
 
 	// Set up network coordinate client.
-	if !conf.DisableCoordinates {
+	if !conf.DisableCoordinates { // 网络协调client
 		serf.coordClient, err = coordinate.NewClient(coordinate.DefaultConfig())
 		if err != nil {
 			return nil, fmt.Errorf("Failed to create coordinate client: %v", err)
@@ -323,7 +323,7 @@ func Create(conf *Config) (*Serf, error) {
 	// Try access the snapshot
 	var oldClock, oldEventClock, oldQueryClock LamportTime
 	var prev []*PreviousNode
-	if conf.SnapshotPath != "" {
+	if conf.SnapshotPath != "" { // 从镜像恢复相关的时钟⏰
 		eventCh, snap, err := NewSnapshotter(
 			conf.SnapshotPath,
 			snapshotSizeLimit,
@@ -347,7 +347,7 @@ func Create(conf *Config) (*Serf, error) {
 
 	// Set up the coordinate cache. We do this after we read the snapshot to
 	// make sure we get a good initial value from there, if we got one.
-	if !conf.DisableCoordinates {
+	if !conf.DisableCoordinates { // 设置Coordinate的缓存
 		serf.coordCache = make(map[string]*coordinate.Coordinate)
 		serf.coordCache[conf.NodeName] = serf.coordClient.GetCoordinate()
 	}
@@ -407,7 +407,7 @@ func Create(conf *Config) (*Serf, error) {
 
 	// Create the underlying memberlist that will manage membership
 	// and failure detection for the Serf instance.
-	memberlist, err := memberlist.Create(conf.MemberlistConfig)
+	memberlist, err := memberlist.Create(conf.MemberlistConfig) //创建对应的memberlist
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create memberlist: %v", err)
 	}
@@ -421,16 +421,16 @@ func Create(conf *Config) (*Serf, error) {
 	// for more information on their role.
 	go serf.handleReap()
 	go serf.handleReconnect()
-	go serf.checkQueueDepth("Intent", serf.broadcasts)
+	go serf.checkQueueDepth("Intent", serf.broadcasts) // 检查事件队列深度
 	go serf.checkQueueDepth("Event", serf.eventBroadcasts)
 	go serf.checkQueueDepth("Query", serf.queryBroadcasts)
 
 	// Attempt to re-join the cluster if we have known nodes
-	if len(prev) != 0 {
+	if len(prev) != 0 { // 从快照中恢复的时候，尝试重新加入原先集群
 		go serf.handleRejoin(prev)
 	}
 
-	return serf, nil
+	return serf, nil // 返回对应的serf实例
 }
 
 // ProtocolVersion returns the current protocol version in use by Serf.
@@ -1549,7 +1549,7 @@ func (s *Serf) eraseNode(m *memberState) {
 func (s *Serf) handleReap() {
 	for {
 		select {
-		case <-time.After(s.config.ReapInterval):
+		case <-time.After(s.config.ReapInterval): // 发送失败的members与left状态的members
 			s.memberLock.Lock()
 			now := time.Now()
 			s.failedMembers = s.reap(s.failedMembers, now, s.config.ReconnectTimeout)
@@ -1568,7 +1568,7 @@ func (s *Serf) handleReconnect() {
 	for {
 		select {
 		case <-time.After(s.config.ReconnectInterval):
-			s.reconnect()
+			s.reconnect() // 重新连接members节点逻辑
 		case <-s.shutdownCh:
 			return
 		}
@@ -1904,7 +1904,7 @@ func (s *Serf) NumNodes() (numNodes int) {
 
 // ValidateNodeNames verifies the NodeName contains
 // only alphanumeric, -, or . and is under 128 chracters
-func (s *Serf) ValidateNodeNames() error {
+func (s *Serf) ValidateNodeNames() error { // 校验节点名称的合法性，仅仅包含-, .等
 	return s.validateNodeName(s.config.NodeName)
 }
 

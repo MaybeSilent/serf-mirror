@@ -122,7 +122,7 @@ type Config struct {
 	// StartJoin is a list of addresses to attempt to join when the
 	// agent starts. If Serf is unable to communicate with any of these
 	// addresses, then the agent will error and exit.
-	StartJoin []string `mapstructure:"start_join"`
+	StartJoin []string `mapstructure:"start_join"` // 启动时想要join的集群
 
 	// EventHandlers is a list of event handlers that will be invoked.
 	// These can be updated during a reload.
@@ -190,7 +190,7 @@ type Config struct {
 	// RetryJoin is a list of addresses to attempt to join when the
 	// agent starts. Serf will continue to retry the join until it
 	// succeeds or RetryMaxAttempts is reached.
-	RetryJoin []string `mapstructure:"retry_join"`
+	RetryJoin []string `mapstructure:"retry_join"` // 启动时加入的集群，会有重试次数的相关配置
 
 	// RetryMaxAttempts is used to limit the maximum attempts made
 	// by RetryJoin to reach other nodes. If this is 0, then no limit
@@ -239,7 +239,7 @@ type Config struct {
 func (c *Config) AddrParts(address string) (string, int, error) {
 	checkAddr := address
 
-START:
+START: // 使用了GOTO语句，进行了重入操作
 	_, _, err := net.SplitHostPort(checkAddr)
 	if ae, ok := err.(*net.AddrError); ok && ae.Err == "missing port in address" {
 		checkAddr = fmt.Sprintf("%s:%d", checkAddr, DefaultBindPort)
@@ -265,7 +265,7 @@ func (c *Config) EncryptBytes() ([]byte, error) {
 
 // EventScripts returns the list of EventScripts associated with this
 // configuration and specified by the "event_handlers" configuration.
-func (c *Config) EventScripts() []EventScript {
+func (c *Config) EventScripts() []EventScript { // event handler的shell脚本文件
 	result := make([]EventScript, 0, len(c.EventHandlers))
 	for _, v := range c.EventHandlers {
 		part := ParseEventScript(v)

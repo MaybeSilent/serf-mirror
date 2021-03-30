@@ -236,7 +236,7 @@ type memberEventRecord struct {
 	Members []Member
 }
 
-type AgentIPC struct {
+type AgentIPC struct { // agent通信
 	sync.Mutex
 	agent     *Agent
 	authKey   string
@@ -327,7 +327,7 @@ func (c *IPCClient) RegisterQuery(q *serf.Query) uint64 {
 
 // NewAgentIPC is used to create a new Agent IPC handler
 func NewAgentIPC(agent *Agent, authKey string, listener net.Listener,
-	logOutput io.Writer, logWriter *logWriter) *AgentIPC {
+	logOutput io.Writer, logWriter *logWriter) *AgentIPC { // agent间通信
 	if logOutput == nil {
 		logOutput = os.Stderr
 	}
@@ -340,7 +340,7 @@ func NewAgentIPC(agent *Agent, authKey string, listener net.Listener,
 		logWriter: logWriter,
 		stopCh:    make(chan struct{}),
 	}
-	go ipc.listen()
+	go ipc.listen() //
 	return ipc
 }
 

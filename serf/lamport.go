@@ -4,11 +4,12 @@ import (
 	"sync/atomic"
 )
 
+// lamport clock 分布式时钟
 // LamportClock is a thread safe implementation of a lamport clock. It
 // uses efficient atomic operations for all of its functions, falling back
-// to a heavy lock only if there are enough CAS failures.
+// to a heavy lock only if there are enough CAS failures. // 过多的CAS失败会进行降级
 type LamportClock struct {
-	counter uint64
+	counter uint64 // lamport逻辑时钟
 }
 
 // LamportTime is the value of a LamportClock.
@@ -32,7 +33,7 @@ WITNESS:
 	cur := atomic.LoadUint64(&l.counter)
 	other := uint64(v)
 	if other < cur {
-		return
+		return // 逻辑时钟更新，如果本地更新则不更新
 	}
 
 	// Ensure that our local clock is at least one ahead.

@@ -18,7 +18,7 @@ import (
 // Agent starts and manages a Serf instance, adding some niceties
 // on top of Serf such as storing logs that you can later retrieve,
 // and invoking EventHandlers when events occur.
-type Agent struct {
+type Agent struct { // agent实例结构体
 	// Stores the serf configuration
 	conf *serf.Config
 
@@ -37,7 +37,7 @@ type Agent struct {
 	logger *log.Logger
 
 	// This is the underlying Serf we are wrapping
-	serf *serf.Serf
+	serf *serf.Serf // serf的实例
 
 	// shutdownCh is used for shutdowns
 	shutdown     bool
@@ -47,6 +47,7 @@ type Agent struct {
 
 // Create creates a new agent, potentially returning an error
 func Create(agentConf *Config, conf *serf.Config, logOutput io.Writer) (*Agent, error) {
+	// agentConf定义了节点agent的相关配置，而serfConfig定义了底层gossip协议的相关配置
 	// Ensure we have a log sink
 	if logOutput == nil {
 		logOutput = os.Stderr
@@ -58,7 +59,7 @@ func Create(agentConf *Config, conf *serf.Config, logOutput io.Writer) (*Agent, 
 	conf.LogOutput = logOutput
 
 	// Create a channel to listen for events from Serf
-	eventCh := make(chan serf.Event, 64)
+	eventCh := make(chan serf.Event, 64) // 事件监听通道
 	conf.EventCh = eventCh
 
 	// Setup the agent
@@ -95,14 +96,14 @@ func (a *Agent) Start() error {
 	a.logger.Printf("[INFO] agent: Serf agent starting")
 
 	// Create serf first
-	serf, err := serf.Create(a.conf)
+	serf, err := serf.Create(a.conf) // 创建serf实例
 	if err != nil {
 		return fmt.Errorf("Error creating Serf: %s", err)
 	}
 	a.serf = serf
 
 	// Start event loop
-	go a.eventLoop()
+	go a.eventLoop() // 时间循环，监听事件
 	return nil
 }
 
@@ -251,7 +252,7 @@ func (a *Agent) eventLoop() {
 	serfShutdownCh := a.serf.ShutdownCh()
 	for {
 		select {
-		case e := <-a.eventCh:
+		case e := <-a.eventCh: // 事件接收event
 			a.logger.Printf("[INFO] agent: Received event: %s", e.String())
 			a.eventHandlersLock.Lock()
 			handlers := a.eventHandlerList
