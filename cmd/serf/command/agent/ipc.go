@@ -254,7 +254,7 @@ type IPCClient struct {
 	conn         net.Conn
 	reader       *bufio.Reader
 	writer       *bufio.Writer
-	dec          *codec.Decoder
+	dec          *codec.Decoder // msgpack解析器
 	enc          *codec.Encoder
 	writeLock    sync.Mutex
 	version      int32 // From the handshake, 0 before
@@ -340,7 +340,7 @@ func NewAgentIPC(agent *Agent, authKey string, listener net.Listener,
 		logWriter: logWriter,
 		stopCh:    make(chan struct{}),
 	}
-	go ipc.listen() //
+	go ipc.listen() // 监听相应的请求
 	return ipc
 }
 
@@ -366,7 +366,7 @@ func (i *AgentIPC) Shutdown() {
 // listen is a long running routine that listens for new clients
 func (i *AgentIPC) listen() {
 	for {
-		conn, err := i.listener.Accept()
+		conn, err := i.listener.Accept() // TCP监听地址
 		if err != nil {
 			if i.stop {
 				return
@@ -379,15 +379,15 @@ func (i *AgentIPC) listen() {
 
 		// Wrap the connection in a client
 		client := &IPCClient{
-			name:           conn.RemoteAddr().String(),
+			name:           conn.RemoteAddr().String(), // 连接的远程地址
 			conn:           conn,
 			reader:         bufio.NewReader(conn),
 			writer:         bufio.NewWriter(conn),
 			eventStreams:   make(map[uint64]*eventStream),
 			pendingQueries: make(map[uint64]*serf.Query),
 		}
-		client.dec = codec.NewDecoder(client.reader,
-			&codec.MsgpackHandle{RawToString: true, WriteExt: true})
+		client.dec = codec.NewDecoder(client.reader, // msgpack协议进行节点间通信
+			&codec.MsgpackHandle{RawToString: true, WriteExt: true}) //
 		client.enc = codec.NewEncoder(client.writer,
 			&codec.MsgpackHandle{RawToString: true, WriteExt: true})
 
@@ -406,7 +406,7 @@ func (i *AgentIPC) listen() {
 // deregisterClient is called to cleanup after a client disconnects
 func (i *AgentIPC) deregisterClient(client *IPCClient) {
 	// Close the socket
-	client.conn.Close()
+	client.conn.Close() // 关闭连接
 
 	// Remove from the clients list
 	i.Lock()
@@ -453,9 +453,9 @@ func (i *AgentIPC) handleClient(client *IPCClient) {
 }
 
 // handleRequest is used to evaluate a single client command
-func (i *AgentIPC) handleRequest(client *IPCClient, reqHeader *requestHeader) error {
+func (i *AgentIPC) handleRequest(client *IPCClient, reqHeader *requestHeader) error { // 处理相应的 request 请求
 	// Look for a command field
-	command := reqHeader.Command
+	command := reqHeader.Command	// 解析成command 与 Seq
 	seq := reqHeader.Seq
 
 	// Ensure the handshake is performed before other commands
@@ -467,6 +467,7 @@ func (i *AgentIPC) handleRequest(client *IPCClient, reqHeader *requestHeader) er
 	metrics.IncrCounter([]string{"agent", "ipc", "command"}, 1)
 
 	// Ensure the client has authenticated after the handshake if necessary
+	// 节点权限验证
 	if i.authKey != "" && !client.didAuth && command != authCommand && command != handshakeCommand {
 		i.logger.Printf("[WARN] agent.ipc: Client sending commands before auth")
 		respHeader := responseHeader{Seq: seq, Error: authRequired}
@@ -488,22 +489,22 @@ func (i *AgentIPC) handleRequest(client *IPCClient, reqHeader *requestHeader) er
 	case membersCommand, membersFilteredCommand:
 		return i.handleMembers(client, command, seq)
 
-	case streamCommand:
+	case streamCommand: // "stream"命令
 		return i.handleStream(client, seq)
 
-	case monitorCommand:
+	case monitorCommand: // "monitor"命令
 		return i.handleMonitor(client, seq)
 
-	case stopCommand:
+	case stopCommand: // "stop"命令
 		return i.handleStop(client, seq)
 
 	case forceLeaveCommand:
 		return i.handleForceLeave(client, seq)
 
-	case joinCommand:
+	case joinCommand: // "join" join节点
 		return i.handleJoin(client, seq)
 
-	case leaveCommand:
+	case leaveCommand: // "leave"
 		return i.handleLeave(client, seq)
 
 	case installKeyCommand:
@@ -540,6 +541,7 @@ func (i *AgentIPC) handleRequest(client *IPCClient, reqHeader *requestHeader) er
 	}
 }
 
+// handshake方法，获取远程连接的version，并记录在map中
 func (i *AgentIPC) handleHandshake(client *IPCClient, seq uint64) error {
 	var req handshakeRequest
 	if err := client.dec.Decode(&req); err != nil {
@@ -562,6 +564,7 @@ func (i *AgentIPC) handleHandshake(client *IPCClient, seq uint64) error {
 	return client.Send(&resp, nil)
 }
 
+// 校验节点的auth信息
 func (i *AgentIPC) handleAuth(client *IPCClient, seq uint64) error {
 	var req authRequest
 	if err := client.dec.Decode(&req); err != nil {
@@ -638,12 +641,12 @@ func (i *AgentIPC) handleJoin(client *IPCClient, seq uint64) error {
 	resp := joinResponse{
 		Num: int32(num),
 	}
-	return client.Send(&header, &resp)
+	return client.Send(&header, &resp) // 返回相应的response
 }
 
 func (i *AgentIPC) handleMembers(client *IPCClient, command string, seq uint64) error {
 	serf := i.agent.Serf()
-	raw := serf.Members()
+	raw := serf.Members() // serf获取加入的节点信息
 	members := make([]Member, 0, len(raw))
 
 	if command == membersFilteredCommand {
@@ -682,7 +685,7 @@ func (i *AgentIPC) handleMembers(client *IPCClient, command string, seq uint64) 
 	resp := membersResponse{
 		Members: members,
 	}
-	return client.Send(&header, &resp)
+	return client.Send(&header, &resp) // 返回对应的members处理
 }
 
 func (i *AgentIPC) filterMembers(members []serf.Member, tags map[string]string,
@@ -1045,6 +1048,7 @@ func (i *AgentIPC) handleStats(client *IPCClient, seq uint64) error {
 // handleGetCoordinate is used to get the cached coordinate for a node.
 func (i *AgentIPC) handleGetCoordinate(client *IPCClient, seq uint64) error {
 	var req coordinateRequest
+	// 继续解析msgpack的相关消息
 	if err := client.dec.Decode(&req); err != nil {
 		return fmt.Errorf("decode failed: %v", err)
 	}

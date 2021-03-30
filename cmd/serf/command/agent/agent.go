@@ -241,7 +241,7 @@ func (a *Agent) DeregisterEventHandler(eh EventHandler) {
 	defer a.eventHandlersLock.Unlock()
 
 	delete(a.eventHandlers, eh)
-	a.eventHandlerList = nil
+	a.eventHandlerList = nil // 非删除写法，直接采用重新构造的方式
 	for eh := range a.eventHandlers {
 		a.eventHandlerList = append(a.eventHandlerList, eh)
 	}

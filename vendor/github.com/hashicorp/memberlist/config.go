@@ -1,10 +1,15 @@
 package memberlist
 
 import (
+	"fmt"
 	"io"
 	"log"
+	"net"
 	"os"
+	"strings"
 	"time"
+
+	multierror "github.com/hashicorp/go-multierror"
 )
 
 type Config struct {
@@ -228,6 +233,35 @@ type Config struct {
 	// RequireNodeNames controls if the name of a node is required when sending
 	// a message to that node.
 	RequireNodeNames bool
+	// CIDRsAllowed If nil, allow any connection (default), otherwise specify all networks
+	// allowed to connect (you must specify IPv6/IPv4 separately)
+	// Using [] will block all connections.
+	CIDRsAllowed []net.IPNet
+}
+
+// ParseCIDRs return a possible empty list of all Network that have been parsed
+// In case of error, it returns succesfully parsed CIDRs and the last error found
+func ParseCIDRs(v []string) ([]net.IPNet, error) {
+	nets := make([]net.IPNet, 0)
+	if v == nil {
+		return nets, nil
+	}
+	var errs error
+	hasErrors := false
+	for _, p := range v {
+		_, net, err := net.ParseCIDR(strings.TrimSpace(p))
+		if err != nil {
+			err = fmt.Errorf("invalid cidr: %s", p)
+			errs = multierror.Append(errs, err)
+			hasErrors = true
+		} else {
+			nets = append(nets, *net)
+		}
+	}
+	if !hasErrors {
+		errs = nil
+	}
+	return nets, errs
 }
 
 // DefaultLANConfig returns a sane set of configurations for Memberlist.
@@ -251,11 +285,11 @@ func DefaultLANConfig() *Config {
 		SuspicionMult:           4,                      // Suspect a node for 4 * log(N+1) * Interval
 		SuspicionMaxTimeoutMult: 6,                      // For 10k nodes this will give a max timeout of 120 seconds
 		PushPullInterval:        30 * time.Second,       // Low frequency
-		ProbeTimeout:            500 * time.Millisecond, // Reasonable RTT time for LAN // 错误检查超时时间
-		ProbeInterval:           1 * time.Second,        // Failure check every second  // 错误检查时间间隔
+		ProbeTimeout:            500 * time.Millisecond, // Reasonable RTT time for LAN
+		ProbeInterval:           1 * time.Second,        // Failure check every second
 		DisableTcpPings:         false,                  // TCP pings are safe, even with mixed versions
 		AwarenessMaxMultiplier:  8,                      // Probe interval backs off to 8 seconds
-		// GOSSIP协议的相关配置
+
 		GossipNodes:          3,                      // Gossip to 3 nodes
 		GossipInterval:       200 * time.Millisecond, // Gossip more rapidly
 		GossipToTheDeadTime:  30 * time.Second,       // Same as push/pull
@@ -271,29 +305,48 @@ func DefaultLANConfig() *Config {
 
 		HandoffQueueDepth: 1024,
 		UDPBufferSize:     1400,
+		CIDRsAllowed:      nil, // same as allow all
 	}
 }
 
 // DefaultWANConfig works like DefaultConfig, however it returns a configuration
 // that is optimized for most WAN environments. The default configuration is
 // still very conservative and errs on the side of caution.
-func DefaultWANConfig() *Config { // 根据lan的策略，在广域网的情况下做了相应的配置优化
+func DefaultWANConfig() *Config {
 	conf := DefaultLANConfig()
 	conf.TCPTimeout = 30 * time.Second
 	conf.SuspicionMult = 6
 	conf.PushPullInterval = 60 * time.Second
 	conf.ProbeTimeout = 3 * time.Second
 	conf.ProbeInterval = 5 * time.Second
-	conf.GossipNodes = 4 // Gossip less frequently, but to an additional node // GOSSIP更多节点，但是GOSSIP的时间间隔更久
+	conf.GossipNodes = 4 // Gossip less frequently, but to an additional node
 	conf.GossipInterval = 500 * time.Millisecond
 	conf.GossipToTheDeadTime = 60 * time.Second
 	return conf
 }
 
+// IPMustBeChecked return true if IPAllowed must be called
+func (c *Config) IPMustBeChecked() bool {
+	return len(c.CIDRsAllowed) > 0
+}
+
+// IPAllowed return an error if access to memberlist is denied
+func (c *Config) IPAllowed(ip net.IP) error {
+	if !c.IPMustBeChecked() {
+		return nil
+	}
+	for _, n := range c.CIDRsAllowed {
+		if n.Contains(ip) {
+			return nil
+		}
+	}
+	return fmt.Errorf("%s is not allowed", ip)
+}
+
 // DefaultLocalConfig works like DefaultConfig, however it returns a configuration
 // that is optimized for a local loopback environments. The default configuration is
 // still very conservative and errs on the side of caution.
-func DefaultLocalConfig() *Config { // 针对本地的回环地址进行了优化，定制了相关的配置
+func DefaultLocalConfig() *Config {
 	conf := DefaultLANConfig()
 	conf.TCPTimeout = time.Second
 	conf.IndirectChecks = 1

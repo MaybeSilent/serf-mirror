@@ -92,6 +92,8 @@ Options:
 	return strings.TrimSpace(helpText)
 }
 
+// members命令，运行后可以获取serf节点中的集群，默认的rpc节点地址为127.0.0.1:7373
+// 在此节点上进行TCP连接
 func (c *MembersCommand) Run(args []string) int {
 	var detailed bool
 	var roleFilter, statusFilter, nameFilter, format string
@@ -121,7 +123,7 @@ func (c *MembersCommand) Run(args []string) int {
 		c.Ui.Error(fmt.Sprintf("Error: %s", err))
 		return 1
 	}
-
+	// rpcClient的rpc地址与鉴权
 	client, err := RPCClient(*rpcAddr, *rpcAuth)
 	if err != nil {
 		c.Ui.Error(fmt.Sprintf("Error connecting to Serf agent: %s", err))

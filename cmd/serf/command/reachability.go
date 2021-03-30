@@ -48,7 +48,7 @@ Options:
 	return strings.TrimSpace(helpText)
 }
 
-func (c *ReachabilityCommand) Run(args []string) int {
+func (c *ReachabilityCommand) Run(args []string) int { //
 	var verbose bool
 	cmdFlags := flag.NewFlagSet("reachability", flag.ContinueOnError)
 	cmdFlags.Usage = func() { c.Ui.Output(c.Help()) }

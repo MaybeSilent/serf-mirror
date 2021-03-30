@@ -504,12 +504,12 @@ func (s *Serf) UserEvent(name string, payload []byte, coalesce bool) error {
 		)
 	}
 
-	s.eventClock.Increment()
+	s.eventClock.Increment() // 增加event的 lamport 时间
 
 	// Process update locally
-	s.handleUserEvent(&msg)
+	s.handleUserEvent(&msg) // 在本地进行event的处理
 
-	s.eventBroadcasts.QueueBroadcast(&broadcast{
+	s.eventBroadcasts.QueueBroadcast(&broadcast{  // 进行消息的广播
 		msg: raw,
 	})
 	return nil
@@ -629,7 +629,7 @@ func (s *Serf) SetTags(tags map[string]string) error {
 // user messages sent prior to the join will be ignored.
 func (s *Serf) Join(existing []string, ignoreOld bool) (int, error) {
 	// Do a quick state check
-	if s.State() != SerfAlive {
+	if s.State() != SerfAlive { // 判断serf自身的状态
 		return 0, fmt.Errorf("Serf can't Join after Leave or Shutdown")
 	}
 
@@ -664,6 +664,7 @@ func (s *Serf) Join(existing []string, ignoreOld bool) (int, error) {
 // given clock value. It is used on either join, or if
 // we need to refute an older leave intent. Cannot be called
 // with the memberLock held.
+//
 func (s *Serf) broadcastJoin(ltime LamportTime) error {
 	// Construct message to update our lamport clock
 	msg := messageJoin{
