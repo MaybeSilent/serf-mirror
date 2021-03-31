@@ -47,7 +47,7 @@ const (
 	indirectPingMsg
 	ackRespMsg
 	suspectMsg
-	aliveMsg
+	aliveMsg  // boardcast的消息
 	deadMsg
 	pushPullMsg
 	compoundMsg

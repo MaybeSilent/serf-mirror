@@ -56,11 +56,11 @@ type Config struct {
 	// that are attempted for messages broadcasted over gossip. The actual
 	// count of retransmissions is calculated using the formula:
 	//
-	//   Retransmits = RetransmitMult * log(N+1)
+	//   Retransmits = RetransmitMult * log(N+1) // gossip广播传输的数量
 	//
 	// This allows the retransmits to scale properly with cluster size. The
 	// higher the multiplier, the more likely a failed broadcast is to converge
-	// at the expense of increased bandwidth.
+	// at the expense of increased bandwidth. // 机器越多，传输的主机也越多，带宽消耗越大
 	RetransmitMult int
 
 	// SuspicionMult is the multiplier for determining the time an
@@ -223,7 +223,7 @@ type Config struct {
 	// be able to increase this to get more content into each gossip packet.
 	// This is a legacy name for backward compatibility but should really be
 	// called PacketBufferSize now that we have generalized the transport.
-	UDPBufferSize int
+	UDPBufferSize int // gossip协议每次发送的包大小, 可以根据MTU进行相应的调整
 
 	// DeadNodeReclaimTime controls the time before a dead node's name can be
 	// reclaimed by one with a different address or port. By default, this is 0,

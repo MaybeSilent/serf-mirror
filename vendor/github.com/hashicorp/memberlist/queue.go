@@ -27,7 +27,7 @@ type TransmitLimitedQueue struct {
 	idGen int64
 }
 
-type limitedBroadcast struct {
+type limitedBroadcast struct { // b树的索引
 	transmits int   // btree-key[0]: Number of transmissions attempted.
 	msgLen    int64 // btree-key[1]: copied from len(b.Message())
 	id        int64 // btree-key[2]: unique incrementing id stamped at submission time
@@ -42,7 +42,7 @@ type limitedBroadcast struct {
 // If !a.Less(b) && !b.Less(a), we treat this to mean a == b (i.e. we can only
 // hold one of either a or b in the tree).
 //
-// default ordering is
+// default ordering is // key1正向排列 key2，key3 逆序排列
 // - [transmits=0, ..., transmits=inf]
 // - [transmits=0:len=999, ..., transmits=0:len=2, ...]
 // - [transmits=0:len=999,id=999, ..., transmits=0:len=999:id=1, ...]
@@ -110,19 +110,19 @@ func (q *TransmitLimitedQueue) walkReadOnlyLocked(reverse bool, f func(*limitedB
 }
 
 // Broadcast is something that can be broadcasted via gossip to
-// the memberlist cluster.
+// the memberlist cluster. // 通过gossip协议进行广播
 type Broadcast interface {
 	// Invalidates checks if enqueuing the current broadcast
 	// invalidates a previous broadcast
-	Invalidates(b Broadcast) bool
+	Invalidates(b Broadcast) bool // 作废相同消息
 
 	// Returns a byte form of the message
-	Message() []byte
+	Message() []byte // 获取消息
 
 	// Finished is invoked when the message will no longer
 	// be broadcast, either due to invalidation or to the
 	// transmit limit being reached
-	Finished()
+	Finished() // 消息广播完成之后进行调用
 }
 
 // NamedBroadcast is an optional extension of the Broadcast interface that
@@ -143,7 +143,7 @@ type Broadcast interface {
 // in the future.
 type NamedBroadcast interface {
 	Broadcast
-	// The unique identity of this broadcast message.
+	// The unique identity of this broadcast message. 唯一的标识名
 	Name() string
 }
 
@@ -161,7 +161,7 @@ type UniqueBroadcast interface {
 }
 
 // QueueBroadcast is used to enqueue a broadcast
-func (q *TransmitLimitedQueue) QueueBroadcast(b Broadcast) {
+func (q *TransmitLimitedQueue) QueueBroadcast(b Broadcast) { // 将Broadcast进行入队列的操作
 	q.queueBroadcast(b, 0)
 }
 
@@ -179,11 +179,12 @@ func (q *TransmitLimitedQueue) lazyInit() {
 // queueBroadcast is like QueueBroadcast but you can use a nonzero value for
 // the initial transmit tier assigned to the message. This is meant to be used
 // for unit testing.
+// 将broadcast信息加入到queue中
 func (q *TransmitLimitedQueue) queueBroadcast(b Broadcast, initialTransmits int) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	q.lazyInit()
+	q.lazyInit() // 懒加载
 
 	if q.idGen == math.MaxInt64 {
 		// it's super duper unlikely to wrap around within the retransmit limit
@@ -191,7 +192,7 @@ func (q *TransmitLimitedQueue) queueBroadcast(b Broadcast, initialTransmits int)
 	} else {
 		q.idGen++
 	}
-	id := q.idGen
+	id := q.idGen // 唯一的id
 
 	lb := &limitedBroadcast{
 		transmits: initialTransmits,
@@ -244,7 +245,7 @@ func (q *TransmitLimitedQueue) queueBroadcast(b Broadcast, initialTransmits int)
 // deleteItem removes the given item from the overall datastructure. You
 // must already hold the mutex.
 func (q *TransmitLimitedQueue) deleteItem(cur *limitedBroadcast) {
-	_ = q.tq.Delete(cur)
+	_ = q.tq.Delete(cur) // 从queue中进行元素删除
 	if cur.name != "" {
 		delete(q.tm, cur.name)
 	}
@@ -252,14 +253,14 @@ func (q *TransmitLimitedQueue) deleteItem(cur *limitedBroadcast) {
 	if q.tq.Len() == 0 {
 		// At idle there's no reason to let the id generator keep going
 		// indefinitely.
-		q.idGen = 0
+		q.idGen = 0 // tq与tm中维护了相关的结构体
 	}
 }
 
 // addItem adds the given item into the overall datastructure. You must already
 // hold the mutex.
 func (q *TransmitLimitedQueue) addItem(cur *limitedBroadcast) {
-	_ = q.tq.ReplaceOrInsert(cur)
+	_ = q.tq.ReplaceOrInsert(cur) // 插入或者替换limitedBroadcast
 	if cur.name != "" {
 		q.tm[cur.name] = cur
 	}
@@ -293,7 +294,7 @@ func (q *TransmitLimitedQueue) GetBroadcasts(overhead, limit int) [][]byte {
 	if q.lenLocked() == 0 {
 		return nil
 	}
-
+	// 最大的传输次数
 	transmitLimit := retransmitLimit(q.RetransmitMult, q.NumNodes())
 
 	var (
@@ -351,17 +352,17 @@ func (q *TransmitLimitedQueue) GetBroadcasts(overhead, limit int) [][]byte {
 		toSend = append(toSend, msg)
 
 		// Check if we should stop transmission
-		q.deleteItem(keep)
-		if keep.transmits+1 >= transmitLimit {
-			keep.b.Finished()
+		q.deleteItem(keep) // 取完后删除相关的节点
+		if keep.transmits+1 >= transmitLimit { // 达到最大的传输次数
+			keep.b.Finished() // 调用Finished方法
 		} else {
 			// We need to bump this item down to another transmit tier, but
 			// because it would be in the same direction that we're walking the
 			// tiers, we will have to delay the reinsertion until we are
 			// finished our search. Otherwise we'll possibly re-add the message
 			// when we ascend to the next tier.
-			keep.transmits++
-			reinsert = append(reinsert, keep)
+			keep.transmits++  				  // 任期++
+			reinsert = append(reinsert, keep) // 膨胀到下个节点
 		}
 	}
 
@@ -389,7 +390,7 @@ func (q *TransmitLimitedQueue) lenLocked() int {
 }
 
 // Reset clears all the queued messages. Should only be used for tests.
-func (q *TransmitLimitedQueue) Reset() {
+func (q *TransmitLimitedQueue) Reset() { // 重置TransmitLimitedQueue，清空相关的消息
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
@@ -405,7 +406,7 @@ func (q *TransmitLimitedQueue) Reset() {
 
 // Prune will retain the maxRetain latest messages, and the rest
 // will be discarded. This can be used to prevent unbounded queue sizes
-func (q *TransmitLimitedQueue) Prune(maxRetain int) {
+func (q *TransmitLimitedQueue) Prune(maxRetain int) { // 对大于maxRetain的节点进行清楚
 	q.mu.Lock()
 	defer q.mu.Unlock()
 

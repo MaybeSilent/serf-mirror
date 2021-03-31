@@ -12,7 +12,7 @@ are contradictory. For example, if we send "{suspect M1 inc: 1},
 then a following {alive M1 inc: 2} will invalidate that message
 */
 
-type memberlistBroadcast struct {
+type memberlistBroadcast struct { // 1，实现了广播消息的优先级排序 2，重试次数过多进行消息的放弃 3，会对消息进行合并去重
 	node   string
 	msg    []byte
 	notify chan struct{}
@@ -76,7 +76,7 @@ func (m *Memberlist) queueBroadcast(node string, msg []byte, notify chan struct{
 // to fill a UDP packet with piggybacked data
 func (m *Memberlist) getBroadcasts(overhead, limit int) [][]byte {
 	// Get memberlist messages first
-	toSend := m.broadcasts.GetBroadcasts(overhead, limit)
+	toSend := m.broadcasts.GetBroadcasts(overhead, limit) // 消费队列中的消息
 
 	// Check if the user has anything to broadcast
 	d := m.config.Delegate

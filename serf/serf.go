@@ -68,7 +68,7 @@ type Serf struct {
 	eventClock LamportClock
 	queryClock LamportClock
 
-	broadcasts    *memberlist.TransmitLimitedQueue
+	broadcasts    *memberlist.TransmitLimitedQueue // serf的广播队列
 	config        *Config
 	failedMembers []*memberState
 	leftMembers   []*memberState
@@ -647,7 +647,7 @@ func (s *Serf) Join(existing []string, ignoreOld bool) (int, error) {
 	}
 
 	// Have memberlist attempt to join
-	num, err := s.memberlist.Join(existing) // join方法最后收敛到memberlist的join方法调用
+	num, err := s.memberlist.Join(existing) // join方法最后收敛到memberlist的join方法调用，加入已知的集群
 
 	// If we joined any nodes, broadcast the join message
 	if num > 0 {
@@ -665,7 +665,7 @@ func (s *Serf) Join(existing []string, ignoreOld bool) (int, error) {
 // we need to refute an older leave intent. Cannot be called
 // with the memberLock held.
 //
-func (s *Serf) broadcastJoin(ltime LamportTime) error {
+func (s *Serf) broadcastJoin(ltime LamportTime) error { // 对join的lamport时间进行广播
 	// Construct message to update our lamport clock
 	msg := messageJoin{
 		LTime: ltime,

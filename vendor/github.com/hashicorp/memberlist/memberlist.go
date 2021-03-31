@@ -74,7 +74,7 @@ type Memberlist struct {
 	ackLock     sync.Mutex
 	ackHandlers map[uint32]*ackHandler
 
-	broadcasts *TransmitLimitedQueue
+	broadcasts *TransmitLimitedQueue // 广播消息
 
 	logger *log.Logger
 }

@@ -596,7 +596,7 @@ func (m *Memberlist) gossip() { // gossip为同步信息
 	// Compute the bytes available
 	bytesAvail := m.config.UDPBufferSize - compoundHeaderOverhead
 	if m.config.EncryptionEnabled() {
-		bytesAvail -= encryptOverhead(m.encryptionVersion())
+		bytesAvail -= encryptOverhead(m.encryptionVersion()) // 加解密的场景下，增加加解密需要的字段
 	}
 
 	for _, node := range kNodes {
@@ -607,7 +607,7 @@ func (m *Memberlist) gossip() { // gossip为同步信息
 		}
 
 		addr := node.Address()
-		if len(msgs) == 1 {
+		if len(msgs) == 1 { //
 			// Send single message as is
 			if err := m.rawSendMsgPacket(node.FullAddress(), &node.Node, msgs[0]); err != nil {
 				m.logger.Printf("[ERR] memberlist: Failed to send gossip to %s: %s", addr, err)
