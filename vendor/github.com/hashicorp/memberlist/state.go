@@ -60,7 +60,7 @@ func (n *Node) String() string {
 // NodeState is used to manage our state view of another node
 type nodeState struct {
 	Node
-	Incarnation uint32        // Last known incarnation number
+	Incarnation uint32        // Last known incarnation number, 用于判断节点的逻辑顺序
 	State       NodeStateType // Current state
 	StateChange time.Time     // Time last state change happened
 }
@@ -101,7 +101,7 @@ func (f NoPingResponseError) Error() string {
 // Schedule is used to ensure the Tick is performed periodically. This
 // function is safe to call multiple times. If the memberlist is already
 // scheduled, then it won't do anything.
-func (m *Memberlist) schedule() {
+func (m *Memberlist) schedule() { // 周期性调度
 	m.tickerLock.Lock()
 	defer m.tickerLock.Unlock()
 
@@ -118,19 +118,19 @@ func (m *Memberlist) schedule() {
 	// Create a new probeTicker
 	if m.config.ProbeInterval > 0 {
 		t := time.NewTicker(m.config.ProbeInterval)
-		go m.triggerFunc(m.config.ProbeInterval, t.C, stopCh, m.probe)
+		go m.triggerFunc(m.config.ProbeInterval, t.C, stopCh, m.probe) // 一段时间内触发probe方法
 		m.tickers = append(m.tickers, t)
 	}
 
 	// Create a push pull ticker if needed
 	if m.config.PushPullInterval > 0 {
-		go m.pushPullTrigger(stopCh)
+		go m.pushPullTrigger(stopCh) // 一段时间内触发pushPull方法
 	}
 
 	// Create a gossip ticker if needed
 	if m.config.GossipInterval > 0 && m.config.GossipNodes > 0 {
 		t := time.NewTicker(m.config.GossipInterval)
-		go m.triggerFunc(m.config.GossipInterval, t.C, stopCh, m.gossip)
+		go m.triggerFunc(m.config.GossipInterval, t.C, stopCh, m.gossip) // 一段时间内触发gossip方法
 		m.tickers = append(m.tickers, t)
 	}
 
@@ -145,6 +145,7 @@ func (m *Memberlist) schedule() {
 // message is received until a stop tick arrives.
 func (m *Memberlist) triggerFunc(stagger time.Duration, C <-chan time.Time, stop <-chan struct{}, f func()) {
 	// Use a random stagger to avoid syncronizing
+	// 利用随机数错开方法触发的时间段
 	randStagger := time.Duration(uint64(rand.Int63()) % uint64(stagger))
 	select {
 	case <-time.After(randStagger):
@@ -166,7 +167,7 @@ func (m *Memberlist) triggerFunc(stagger time.Duration, C <-chan time.Time, stop
 // timer is dynamically scaled based on cluster size to avoid network
 // saturation
 func (m *Memberlist) pushPullTrigger(stop <-chan struct{}) {
-	interval := m.config.PushPullInterval
+	interval := m.config.PushPullInterval // pushPull的时间间隔
 
 	// Use a random stagger to avoid syncronizing
 	randStagger := time.Duration(uint64(rand.Int63()) % uint64(interval))
@@ -178,6 +179,7 @@ func (m *Memberlist) pushPullTrigger(stop <-chan struct{}) {
 
 	// Tick using a dynamic timer
 	for {
+		// 触发时间需要根据集群规模进行动态调整
 		tickTime := pushPullScale(interval, m.estNumNodes())
 		select {
 		case <-time.After(tickTime):
@@ -190,7 +192,7 @@ func (m *Memberlist) pushPullTrigger(stop <-chan struct{}) {
 
 // Deschedule is used to stop the background maintenance. This is safe
 // to call multiple times.
-func (m *Memberlist) deschedule() {
+func (m *Memberlist) deschedule() { // 通过
 	m.tickerLock.Lock()
 	defer m.tickerLock.Unlock()
 
@@ -200,12 +202,12 @@ func (m *Memberlist) deschedule() {
 	}
 
 	// Close the stop channel so all the ticker listeners stop.
-	close(m.stopTick)
+	close(m.stopTick) // 向stop channel中发送关闭信号
 
 	// Explicitly stop all the tickers themselves so they don't take
 	// up any more resources, and get rid of the list.
 	for _, t := range m.tickers {
-		t.Stop()
+		t.Stop() // 将多个时间ticker进行暂停
 	}
 	m.tickers = nil
 }
@@ -213,7 +215,7 @@ func (m *Memberlist) deschedule() {
 // Tick is used to perform a single round of failure detection and gossip
 func (m *Memberlist) probe() {
 	// Track the number of indexes we've considered probing
-	numCheck := 0
+	numCheck := 0 // 进行失败检测
 START:
 	m.nodeLock.RLock()
 
@@ -252,7 +254,7 @@ START:
 	}
 
 	// Probe the specific node
-	m.probeNode(&node)
+	m.probeNode(&node) // 对节点进行失败检测，该节点为存储的远端节点
 }
 
 // probeNodeByAddr just safely calls probeNode given only the address of the node (for tests)
@@ -286,7 +288,7 @@ func (m *Memberlist) probeNode(node *nodeState) {
 	// We use our health awareness to scale the overall probe interval, so we
 	// slow down if we detect problems. The ticker that calls us can handle
 	// us running over the base interval, and will skip missed ticks.
-	probeInterval := m.awareness.ScaleTimeout(m.config.ProbeInterval)
+	probeInterval := m.awareness.ScaleTimeout(m.config.ProbeInterval) // 根据自身健康状况获取检测时长
 	if probeInterval > m.config.ProbeInterval {
 		metrics.IncrCounter([]string{"memberlist", "degraded", "probe"}, 1)
 	}
@@ -294,7 +296,7 @@ func (m *Memberlist) probeNode(node *nodeState) {
 	// Prepare a ping message and setup an ack handler.
 	selfAddr, selfPort := m.getAdvertise()
 	ping := ping{
-		SeqNo:      m.nextSeqNo(),
+		SeqNo:      m.nextSeqNo(), // 原子操作，获取序列号
 		Node:       node.Name,
 		SourceAddr: selfAddr,
 		SourcePort: selfPort,
@@ -314,7 +316,7 @@ func (m *Memberlist) probeNode(node *nodeState) {
 	// Send a ping to the node. If this node looks like it's suspect or dead,
 	// also tack on a suspect message so that it has a chance to refute as
 	// soon as possible.
-	deadline := sent.Add(probeInterval)
+	deadline := sent.Add(probeInterval) // 设置ping的超时时间
 	addr := node.Address()
 
 	// Arrange for our self-awareness to get updated.
@@ -322,10 +324,11 @@ func (m *Memberlist) probeNode(node *nodeState) {
 	defer func() {
 		m.awareness.ApplyDelta(awarenessDelta)
 	}()
+	// ping的节点仅有两种状态StateSuspect与StateAlive
 	if node.State == StateAlive {
 		if err := m.encodeAndSendMsg(node.FullAddress(), pingMsg, &ping); err != nil {
 			m.logger.Printf("[ERR] memberlist: Failed to send ping: %s", err)
-			if failedRemote(err) {
+			if failedRemote(err) { // 远端发送或者读写错误，进入远端错误处理
 				goto HANDLE_REMOTE_FAILURE
 			} else {
 				return
@@ -346,12 +349,12 @@ func (m *Memberlist) probeNode(node *nodeState) {
 		} else {
 			msgs = append(msgs, buf.Bytes())
 		}
-
+		// suspect节点发送的消息请求中，含有suspect的消息结构体
 		compound := makeCompoundMessage(msgs)
 		if err := m.rawSendMsgPacket(node.FullAddress(), &node.Node, compound.Bytes()); err != nil {
 			m.logger.Printf("[ERR] memberlist: Failed to send compound ping and suspect message to %s: %s", addr, err)
 			if failedRemote(err) {
-				goto HANDLE_REMOTE_FAILURE
+				goto HANDLE_REMOTE_FAILURE // 远端错误处理
 			} else {
 				return
 			}
@@ -363,11 +366,11 @@ func (m *Memberlist) probeNode(node *nodeState) {
 	// which will improve our health until we get to the failure scenarios
 	// at the end of this function, which will alter this delta variable
 	// accordingly.
-	awarenessDelta = -1
+	awarenessDelta = -1 // 检测成功，未发生error
 
 	// Wait for response or round-trip-time.
 	select {
-	case v := <-ackCh:
+	case v := <-ackCh: // 从channel中获取
 		if v.Complete == true {
 			if m.config.Ping != nil {
 				rtt := v.Timestamp.Sub(sent)
@@ -378,10 +381,11 @@ func (m *Memberlist) probeNode(node *nodeState) {
 
 		// As an edge case, if we get a timeout, we need to re-enqueue it
 		// here to break out of the select below.
+		// 如果从ackCh中得到了超时信息，重新入channel
 		if v.Complete == false {
 			ackCh <- v
 		}
-	case <-time.After(m.config.ProbeTimeout):
+	case <-time.After(m.config.ProbeTimeout): //
 		// Note that we don't scale this timeout based on awareness and
 		// the health score. That's because we don't really expect waiting
 		// longer to help get UDP through. Since health does extend the
@@ -391,7 +395,7 @@ func (m *Memberlist) probeNode(node *nodeState) {
 		m.logger.Printf("[DEBUG] memberlist: Failed ping: %s (timeout reached)", node.Name)
 	}
 
-HANDLE_REMOTE_FAILURE:
+HANDLE_REMOTE_FAILURE: // 对连接或者读写错误进行处理
 	// Get some random live nodes.
 	m.nodeLock.RLock()
 	kNodes := kRandomNodes(m.config.IndirectChecks, m.nodes, func(n *nodeState) bool {
@@ -401,7 +405,7 @@ HANDLE_REMOTE_FAILURE:
 	})
 	m.nodeLock.RUnlock()
 
-	// Attempt an indirect ping.
+	// Attempt an indirect ping. // 尝试间接ping
 	expectedNacks := 0
 	selfAddr, selfPort = m.getAdvertise()
 	ind := indirectPingReq{
@@ -419,7 +423,7 @@ HANDLE_REMOTE_FAILURE:
 		if ind.Nack = peer.PMax >= 4; ind.Nack {
 			expectedNacks++
 		}
-
+		// 发送indirectPing的消息
 		if err := m.encodeAndSendMsg(peer.FullAddress(), indirectPingMsg, &ind); err != nil {
 			m.logger.Printf("[ERR] memberlist: Failed to send indirect ping: %s", err)
 		}
@@ -442,10 +446,12 @@ HANDLE_REMOTE_FAILURE:
 	if (!disableTcpPings) && (node.PMax >= 3) {
 		go func() {
 			defer close(fallbackCh)
+			// 复用原有的deadline
 			didContact, err := m.sendPingAndWaitForAck(node.FullAddress(), ping, deadline)
 			if err != nil {
 				m.logger.Printf("[ERR] memberlist: Failed fallback ping: %s", err)
 			} else {
+				// tcp连接并ack成功，发送channel
 				fallbackCh <- didContact
 			}
 		}()
@@ -468,7 +474,7 @@ HANDLE_REMOTE_FAILURE:
 	// the channel will have something or be closed without having to wait
 	// any additional time here.
 	for didContact := range fallbackCh {
-		if didContact {
+		if didContact { // 能够通过TCP连接节点
 			m.logger.Printf("[WARN] memberlist: Was able to connect to %s but other probes failed, network may be misconfigured", node.Name)
 			return
 		}
@@ -482,7 +488,7 @@ HANDLE_REMOTE_FAILURE:
 	// decide if the probed node was really dead or if it was something wrong
 	// with ourselves.
 	awarenessDelta = 0
-	if expectedNacks > 0 {
+	if expectedNacks > 0 { // 更新
 		if nackCount := len(nackCh); nackCount < expectedNacks {
 			awarenessDelta += (expectedNacks - nackCount)
 		}
@@ -538,7 +544,7 @@ func (m *Memberlist) Ping(node string, addr net.Addr) (time.Duration, error) {
 
 // resetNodes is used when the tick wraps around. It will reap the
 // dead nodes and shuffle the node list.
-func (m *Memberlist) resetNodes() {
+func (m *Memberlist) resetNodes() { //
 	m.nodeLock.Lock()
 	defer m.nodeLock.Unlock()
 
@@ -563,7 +569,8 @@ func (m *Memberlist) resetNodes() {
 
 // gossip is invoked every GossipInterval period to broadcast our gossip
 // messages to a few random nodes.
-func (m *Memberlist) gossip() {
+// 发送gossip message给其余节点
+func (m *Memberlist) gossip() { // gossip为同步信息
 	defer metrics.MeasureSince([]string{"memberlist", "gossip"}, time.Now())
 
 	// Get some random live, suspect, or recently dead nodes
@@ -574,10 +581,10 @@ func (m *Memberlist) gossip() {
 		}
 
 		switch n.State {
-		case StateAlive, StateSuspect:
+		case StateAlive, StateSuspect: // alive和suspect的节点不发送
 			return false
 
-		case StateDead:
+		case StateDead: // 死亡状态的节点
 			return time.Since(n.StateChange) > m.config.GossipToTheDeadTime
 
 		default:
@@ -641,6 +648,7 @@ func (m *Memberlist) pushPull() {
 }
 
 // pushPullNode does a complete state exchange with a specific node.
+// 与集群中的另一个节点进行集群交换
 func (m *Memberlist) pushPullNode(a Address, join bool) error {
 	defer metrics.MeasureSince([]string{"memberlist", "pushPullNode"}, time.Now())
 
@@ -650,7 +658,7 @@ func (m *Memberlist) pushPullNode(a Address, join bool) error {
 		return err
 	}
 
-	if err := m.mergeRemoteState(join, remote, userState); err != nil {
+	if err := m.mergeRemoteState(join, remote, userState); err != nil { // 合并远端的集群信息
 		return err
 	}
 	return nil
@@ -792,7 +800,7 @@ func (m *Memberlist) skipIncarnation(offset uint32) uint32 {
 
 // estNumNodes is used to get the current estimate of the number of nodes
 func (m *Memberlist) estNumNodes() int {
-	return int(atomic.LoadUint32(&m.numNodes))
+	return int(atomic.LoadUint32(&m.numNodes)) // 集群中估计的节点数
 }
 
 type ackMessage struct {
@@ -860,14 +868,14 @@ func (m *Memberlist) setAckHandler(seqNo uint32, ackFn func([]byte, time.Time), 
 // Invokes an ack handler if any is associated, and reaps the handler immediately
 func (m *Memberlist) invokeAckHandler(ack ackResp, timestamp time.Time) {
 	m.ackLock.Lock()
-	ah, ok := m.ackHandlers[ack.SeqNo]
+	ah, ok := m.ackHandlers[ack.SeqNo] // 通过seqNo找到对应的handler，该handler存储在map中
 	delete(m.ackHandlers, ack.SeqNo)
 	m.ackLock.Unlock()
 	if !ok {
 		return
 	}
 	ah.timer.Stop()
-	ah.ackFn(ack.Payload, timestamp)
+	ah.ackFn(ack.Payload, timestamp) // 调用ackFn方法，会向channel发送ping成功的数据
 }
 
 // Invokes nack handler if any is associated.
@@ -1011,7 +1019,7 @@ func (m *Memberlist) aliveNode(a *alive, notify chan struct{}, bootstrap bool) {
 		atomic.AddUint32(&m.numNodes, 1)
 	} else {
 		// Check if this address is different than the existing node unless the old node is dead.
-		if !bytes.Equal([]byte(state.Addr), a.Addr) || state.Port != a.Port {
+		if !bytes.Equal([]byte(state.Addr), a.Addr) || state.Port != a.Port { // 通过IP与端口号判断是否是同一个节点信息
 			errCon := m.config.IPAllowed(a.Addr)
 			if errCon != nil {
 				m.logger.Printf("[WARN] memberlist: Rejected IP update from %v to %v for node %s: %s", a.Node, state.Addr, net.IP(a.Addr), errCon)
@@ -1131,7 +1139,7 @@ func (m *Memberlist) aliveNode(a *alive, notify chan struct{}, bootstrap bool) {
 
 // suspectNode is invoked by the network layer when we get a message
 // about a suspect node
-func (m *Memberlist) suspectNode(s *suspect) {
+func (m *Memberlist) suspectNode(s *suspect) { // 将node状态置为suspect
 	m.nodeLock.Lock()
 	defer m.nodeLock.Unlock()
 	state, ok := m.nodeMap[s.Node]
@@ -1150,8 +1158,8 @@ func (m *Memberlist) suspectNode(s *suspect) {
 	// to us we will go ahead and re-gossip it. This allows for multiple
 	// independent confirmations to flow even when a node probes a node
 	// that's already suspect.
-	if timer, ok := m.nodeTimers[s.Node]; ok {
-		if timer.Confirm(s.From) {
+	if timer, ok := m.nodeTimers[s.Node]; ok { // 如果在nodeTimers中已经有suspiction节点
+		if timer.Confirm(s.From) { // 已有
 			m.encodeAndBroadcast(s.Node, suspectMsg, s)
 		}
 		return
@@ -1164,10 +1172,10 @@ func (m *Memberlist) suspectNode(s *suspect) {
 
 	// If this is us we need to refute, otherwise re-broadcast
 	if state.Name == m.config.Name {
-		m.refute(state, s.Incarnation)
+		m.refute(state, s.Incarnation) // 不会将自身标记为suspect
 		m.logger.Printf("[WARN] memberlist: Refuting a suspect message (from: %s)", s.From)
 		return // Do not mark ourself suspect
-	} else {
+	} else { // 进行广播
 		m.encodeAndBroadcast(s.Node, suspectMsg, s)
 	}
 
@@ -1176,7 +1184,7 @@ func (m *Memberlist) suspectNode(s *suspect) {
 
 	// Update the state
 	state.Incarnation = s.Incarnation
-	state.State = StateSuspect
+	state.State = StateSuspect // 将该节点的state状态置为Suspect
 	changeTime := time.Now()
 	state.StateChange = changeTime
 

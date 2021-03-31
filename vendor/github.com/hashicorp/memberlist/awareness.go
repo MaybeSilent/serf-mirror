@@ -11,12 +11,13 @@ import (
 // local node. Health is primary the node's ability to respond in the soft
 // real-time manner required for correct health checking of other nodes in the
 // cluster.
+// 对本机的状态评估
 type awareness struct {
 	sync.RWMutex
 
 	// max is the upper threshold for the timeout scale (the score will be
 	// constrained to be from 0 <= score < max).
-	max int
+	max int // 健康指数最大值
 
 	// score is the current awareness score. Lower values are healthier and
 	// zero is the minimum value.
@@ -24,7 +25,7 @@ type awareness struct {
 }
 
 // newAwareness returns a new awareness object.
-func newAwareness(max int) *awareness {
+func newAwareness(max int) *awareness { // 直接返回0
 	return &awareness{
 		max:   max,
 		score: 0,
@@ -34,7 +35,7 @@ func newAwareness(max int) *awareness {
 // ApplyDelta takes the given delta and applies it to the score in a thread-safe
 // manner. It also enforces a floor of zero and a max of max, so deltas may not
 // change the overall score if it's railed at one of the extremes.
-func (a *awareness) ApplyDelta(delta int) {
+func (a *awareness) ApplyDelta(delta int) { // 更新健康指数，加锁确保线程安全
 	a.Lock()
 	initial := a.score
 	a.score += delta
@@ -52,7 +53,7 @@ func (a *awareness) ApplyDelta(delta int) {
 }
 
 // GetHealthScore returns the raw health score.
-func (a *awareness) GetHealthScore() int {
+func (a *awareness) GetHealthScore() int { // 返回健康指数
 	a.RLock()
 	score := a.score
 	a.RUnlock()
@@ -65,5 +66,5 @@ func (a *awareness) ScaleTimeout(timeout time.Duration) time.Duration {
 	a.RLock()
 	score := a.score
 	a.RUnlock()
-	return timeout * (time.Duration(score) + 1)
+	return timeout * (time.Duration(score) + 1) // 自身健康状况不佳的情况下会等待更长时间
 }

@@ -647,12 +647,12 @@ func (s *Serf) Join(existing []string, ignoreOld bool) (int, error) {
 	}
 
 	// Have memberlist attempt to join
-	num, err := s.memberlist.Join(existing)
+	num, err := s.memberlist.Join(existing) // join方法最后收敛到memberlist的join方法调用
 
 	// If we joined any nodes, broadcast the join message
 	if num > 0 {
 		// Start broadcasting the update
-		if err := s.broadcastJoin(s.clock.Time()); err != nil {
+		if err := s.broadcastJoin(s.clock.Time()); err != nil { // 对join时间进行广播
 			return num, err
 		}
 	}

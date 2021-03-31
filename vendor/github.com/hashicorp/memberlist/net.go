@@ -43,7 +43,7 @@ type messageType uint8
 
 // The list of available message types.
 const (
-	pingMsg messageType = iota
+	pingMsg messageType = iota // 消息的类型
 	indirectPingMsg
 	ackRespMsg
 	suspectMsg
@@ -370,9 +370,9 @@ func (m *Memberlist) handleCommand(buf []byte, from net.Addr, timestamp time.Tim
 		m.handlePing(buf, from)
 	case indirectPingMsg:
 		m.handleIndirectPing(buf, from)
-	case ackRespMsg:
+	case ackRespMsg: // 处理ping的返回请求
 		m.handleAck(buf, from, timestamp)
-	case nackRespMsg:
+	case nackRespMsg: //
 		m.handleNack(buf, from)
 
 	case suspectMsg:
@@ -587,7 +587,7 @@ func (m *Memberlist) handleIndirectPing(buf []byte, from net.Addr) {
 					Addr: indAddr,
 					Name: ind.SourceNode,
 				}
-				if err := m.encodeAndSendMsg(a, nackRespMsg, &nack); err != nil {
+				if err := m.encodeAndSendMsg(a,  nackRespMsg, &nack); err != nil {
 					m.logger.Printf("[ERR] memberlist: Failed to send nack: %s %s", err, LogStringAddress(indAddr))
 				}
 			}
@@ -596,7 +596,7 @@ func (m *Memberlist) handleIndirectPing(buf []byte, from net.Addr) {
 }
 
 func (m *Memberlist) handleAck(buf []byte, from net.Addr, timestamp time.Time) {
-	var ack ackResp
+	var ack ackResp // 解码探针检测的返回信息
 	if err := decode(buf, &ack); err != nil {
 		m.logger.Printf("[ERR] memberlist: Failed to decode ack response: %s %s", err, LogAddress(from))
 		return
@@ -819,7 +819,7 @@ func (m *Memberlist) rawSendMsgStream(conn net.Conn, sendBuf []byte) error {
 		}
 	}
 
-	// Check if encryption is enabled
+	// Check if encryption is enabled // 确认是否开启了加解密
 	if m.config.EncryptionEnabled() && m.config.GossipVerifyOutgoing {
 		crypt, err := m.encryptLocalState(sendBuf)
 		if err != nil {
@@ -878,6 +878,7 @@ func (m *Memberlist) sendAndReceiveState(a Address, join bool) ([]pushNodeState,
 	}
 
 	// Attempt to connect
+	// 连接相应的地址，获取相应的连接，底层用的是net.Dail获取TCP连接
 	conn, err := m.transport.DialAddressTimeout(a, m.config.TCPTimeout)
 	if err != nil {
 		return nil, nil, err
@@ -891,8 +892,10 @@ func (m *Memberlist) sendAndReceiveState(a Address, join bool) ([]pushNodeState,
 		return nil, nil, err
 	}
 
-	conn.SetDeadline(time.Now().Add(m.config.TCPTimeout))
-	msgType, bufConn, dec, err := m.readStream(conn)
+	conn.SetDeadline(time.Now().Add(m.config.TCPTimeout)) // 设置超时时间
+
+	// 首先判断msgType
+	msgType, bufConn, dec, err := m.readStream(conn) // 读取连接的返回内容
 	if err != nil {
 		return nil, nil, err
 	}
@@ -902,11 +905,11 @@ func (m *Memberlist) sendAndReceiveState(a Address, join bool) ([]pushNodeState,
 		if err := dec.Decode(&resp); err != nil {
 			return nil, nil, err
 		}
-		return nil, nil, fmt.Errorf("remote error: %v", resp.Error)
+		return nil, nil, fmt.Errorf("remote error: %v", resp.Error) // 远端错误
 	}
 
 	// Quit if not push/pull
-	if msgType != pushPullMsg {
+	if msgType != pushPullMsg { // 得到pushPullMsg
 		err := fmt.Errorf("received invalid msgType (%d), expected pushPullMsg (%d) %s", msgType, pushPullMsg, LogConn(conn))
 		return nil, nil, err
 	}
@@ -917,6 +920,7 @@ func (m *Memberlist) sendAndReceiveState(a Address, join bool) ([]pushNodeState,
 }
 
 // sendLocalState is invoked to send our local state over a stream connection.
+// 发送Local的connections
 func (m *Memberlist) sendLocalState(conn net.Conn, join bool) error {
 	// Setup a deadline
 	conn.SetDeadline(time.Now().Add(m.config.TCPTimeout))
@@ -953,7 +957,7 @@ func (m *Memberlist) sendLocalState(conn net.Conn, join bool) error {
 	enc := codec.NewEncoder(bufConn, &hd)
 
 	// Begin state push
-	if _, err := bufConn.Write([]byte{byte(pushPullMsg)}); err != nil {
+	if _, err := bufConn.Write([]byte{byte(pushPullMsg)}); err != nil { // 发送pushPull的信息
 		return err
 	}
 
@@ -1127,7 +1131,7 @@ func (m *Memberlist) readRemoteState(bufConn io.Reader, dec *codec.Decoder) (boo
 	}
 
 	// For proto versions < 2, there is no port provided. Mask old
-	// behavior by using the configured port
+	// behavior by using the configured port 特殊兼容逻辑，使用配置的端口
 	for idx := range remoteNodes {
 		if m.ProtocolVersion() < 2 || remoteNodes[idx].Port == 0 {
 			remoteNodes[idx].Port = uint16(m.config.BindPort)
@@ -1139,6 +1143,7 @@ func (m *Memberlist) readRemoteState(bufConn io.Reader, dec *codec.Decoder) (boo
 
 // mergeRemoteState is used to merge the remote state with our local state
 func (m *Memberlist) mergeRemoteState(join bool, remoteNodes []pushNodeState, userBuf []byte) error {
+	// 验证当前节点能够与远端节点进行交流（确保能够进行调用）
 	if err := m.verifyProtocol(remoteNodes); err != nil {
 		return err
 	}
@@ -1167,7 +1172,7 @@ func (m *Memberlist) mergeRemoteState(join bool, remoteNodes []pushNodeState, us
 	}
 
 	// Merge the membership state
-	m.mergeState(remoteNodes)
+	m.mergeState(remoteNodes) // 合并节点的信息
 
 	// Invoke the delegate for user state
 	if userBuf != nil && m.config.Delegate != nil {

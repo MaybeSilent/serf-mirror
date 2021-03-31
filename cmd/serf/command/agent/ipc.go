@@ -631,7 +631,7 @@ func (i *AgentIPC) handleJoin(client *IPCClient, seq uint64) error {
 	}
 
 	// Attempt the join
-	num, err := i.agent.Join(req.Existing, req.Replay)
+	num, err := i.agent.Join(req.Existing, req.Replay) // serf join方法的处理
 
 	// Respond
 	header := responseHeader{

@@ -177,7 +177,7 @@ func (d *delegate) LocalState(join bool) []byte {
 	defer d.serf.eventLock.RUnlock()
 
 	// Create the message to send
-	pp := messagePushPull{
+	pp := messagePushPull{ // 发送消息的结构体
 		LTime:        d.serf.clock.Time(),
 		StatusLTimes: make(map[string]LamportTime, len(d.serf.members)),
 		LeftMembers:  make([]string, 0, len(d.serf.leftMembers)),

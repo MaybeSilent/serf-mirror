@@ -63,7 +63,7 @@ type Memberlist struct {
 	nodeLock   sync.RWMutex
 	nodes      []*nodeState          // Known nodes
 	nodeMap    map[string]*nodeState // Maps Node.Name -> NodeState
-	nodeTimers map[string]*suspicion // Maps Node.Name -> suspicion timer
+	nodeTimers map[string]*suspicion // Maps Node.Name -> suspicion timer // 标记为suspicion的节点
 	awareness  *awareness
 
 	tickerLock sync.Mutex
@@ -134,7 +134,7 @@ func newMemberlist(conf *Config) (*Memberlist, error) {
 	// by the config.
 	transport := conf.Transport
 	if transport == nil {
-		nc := &NetTransportConfig{
+		nc := &NetTransportConfig{ // 默认为使用net的Transport
 			BindAddrs: []string{conf.BindAddr},
 			BindPort:  conf.BindPort,
 			Logger:    logger,
@@ -225,7 +225,7 @@ func newMemberlist(conf *Config) (*Memberlist, error) {
 // After creating a Memberlist, the configuration given should not be
 // modified by the user anymore.
 func Create(conf *Config) (*Memberlist, error) {
-	m, err := newMemberlist(conf)
+	m, err := newMemberlist(conf) // 创建新的memberlist
 	if err != nil {
 		return nil, err
 	}
@@ -233,7 +233,7 @@ func Create(conf *Config) (*Memberlist, error) {
 		m.Shutdown()
 		return nil, err
 	}
-	m.schedule()
+	m.schedule() // 对memberlist进行调度
 	return m, nil
 }
 

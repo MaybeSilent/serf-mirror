@@ -147,8 +147,8 @@ type Config struct {
 	// GossipToTheDeadTime is the interval after which a node has died that
 	// we will still try to gossip to it. This gives it a chance to refute.
 	GossipInterval      time.Duration
-	GossipNodes         int
-	GossipToTheDeadTime time.Duration
+	GossipNodes         int // 配置文件配置的节点数
+	GossipToTheDeadTime time.Duration // 配置的间隔时间，给死亡节点纠正的机会
 
 	// GossipVerifyIncoming controls whether to enforce encryption for incoming
 	// gossip. It is used for upshifting from unencrypted to encrypted gossip on

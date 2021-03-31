@@ -182,7 +182,7 @@ func (t *NetTransport) WriteTo(b []byte, addr string) (time.Time, error) {
 func (t *NetTransport) WriteToAddress(b []byte, a Address) (time.Time, error) {
 	addr := a.Addr
 
-	udpAddr, err := net.ResolveUDPAddr("udp", addr)
+	udpAddr, err := net.ResolveUDPAddr("udp", addr) // write to address，通过发送udp包来发送
 	if err != nil {
 		return time.Time{}, err
 	}

@@ -88,10 +88,10 @@ func shuffleNodes(nodes []*nodeState) {
 // cluster size grows
 func pushPullScale(interval time.Duration, n int) time.Duration {
 	// Don't scale until we cross the threshold
-	if n <= pushPullScaleThreshold {
+	if n <= pushPullScaleThreshold { // 集群规模增加后再进行收敛的计算，默认值为32
 		return interval
 	}
-
+	// 倍数增加，33-64，pushPull时间双倍，65则pushPull时间间隔为3倍
 	multiplier := math.Ceil(math.Log2(float64(n))-math.Log2(pushPullScaleThreshold)) + 1.0
 	return time.Duration(multiplier) * interval
 }
