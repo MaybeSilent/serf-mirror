@@ -17,7 +17,7 @@ import (
 const (
 	// udpPacketBufSize is used to buffer incoming packets during read
 	// operations.
-	udpPacketBufSize = 65536
+	udpPacketBufSize = 65536 // udp的包大小
 
 	// udpRecvBufSize is a large buffer size that we attempt to set UDP
 	// sockets to in order to handle a large volume of messages.
@@ -110,7 +110,7 @@ func NewNetTransport(config *NetTransportConfig) (*NetTransport, error) {
 	// Fire them up now that we've been able to create them all.
 	for i := 0; i < len(config.BindAddrs); i++ {
 		t.wg.Add(2)
-		go t.tcpListen(t.tcpListeners[i])
+		go t.tcpListen(t.tcpListeners[i]) // 在bindAddr上启动udp与tcp的监听端口
 		go t.udpListen(t.udpListeners[i])
 	}
 
@@ -277,7 +277,7 @@ func (t *NetTransport) tcpListen(tcpLn *net.TCPListener) {
 	defer t.wg.Done()
 
 	// baseDelay is the initial delay after an AcceptTCP() error before attempting again
-	const baseDelay = 5 * time.Millisecond
+	const baseDelay = 5 * time.Millisecond // 监听获取连接错误，sleep baseDelay后继续执行
 
 	// maxDelay is the maximum delay after an AcceptTCP() error before attempting again.
 	// In the case that tcpListen() is error-looping, it will delay the shutdown check.
@@ -309,7 +309,7 @@ func (t *NetTransport) tcpListen(tcpLn *net.TCPListener) {
 		// No error, reset loop delay
 		loopDelay = 0
 
-		t.streamCh <- conn
+		t.streamCh <- conn // 将连接发送到streamCh中
 	}
 }
 
@@ -324,6 +324,7 @@ func (t *NetTransport) udpListen(udpLn *net.UDPConn) {
 		n, addr, err := udpLn.ReadFrom(buf)
 		ts := time.Now()
 		if err != nil {
+			// err 发生的时候，判断是否已经关闭
 			if s := atomic.LoadInt32(&t.shutdown); s == 1 {
 				break
 			}
@@ -342,9 +343,9 @@ func (t *NetTransport) udpListen(udpLn *net.UDPConn) {
 
 		// Ingest the packet.
 		metrics.IncrCounter([]string{"memberlist", "udp", "received"}, float32(n))
-		t.packetCh <- &Packet{
+		t.packetCh <- &Packet{ // 将收到的udp包发送到packetCh中
 			Buf:       buf[:n],
-			From:      addr,
+			From:      addr, // 记录udp包的地址
 			Timestamp: ts,
 		}
 	}

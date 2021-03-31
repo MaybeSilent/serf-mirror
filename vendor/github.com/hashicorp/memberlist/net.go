@@ -210,7 +210,7 @@ func (m *Memberlist) streamListen() {
 	for {
 		select {
 		case conn := <-m.transport.StreamCh():
-			go m.handleConn(conn)
+			go m.handleConn(conn) // tcp连接处理channel
 
 		case <-m.shutdownCh:
 			return
@@ -313,7 +313,7 @@ func (m *Memberlist) packetListen() {
 	for {
 		select {
 		case packet := <-m.transport.PacketCh():
-			m.ingestPacket(packet.Buf, packet.From, packet.Timestamp)
+			m.ingestPacket(packet.Buf, packet.From, packet.Timestamp) // udp连接处理channel
 
 		case <-m.shutdownCh:
 			return
@@ -398,7 +398,7 @@ func (m *Memberlist) handleCommand(buf []byte, from net.Addr, timestamp time.Tim
 		m.msgQueueLock.Unlock()
 
 		// Notify of pending message
-		select {
+		select { // 触发
 		case m.handoffCh <- struct{}{}:
 		default:
 		}
@@ -428,7 +428,7 @@ func (m *Memberlist) getNextMessage() (msgHandoff, bool) {
 // packetHandler is a long running goroutine that processes messages received
 // over the packet interface, but is decoupled from the listener to avoid
 // blocking the listener which may cause ping/ack messages to be delayed.
-func (m *Memberlist) packetHandler() {
+func (m *Memberlist) packetHandler() { // packet接口，与listener解藕，防止影响ping与ack的消息
 	for {
 		select {
 		case <-m.handoffCh:

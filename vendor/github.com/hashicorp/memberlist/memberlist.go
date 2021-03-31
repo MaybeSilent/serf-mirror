@@ -55,7 +55,7 @@ type Memberlist struct {
 
 	transport NodeAwareTransport
 
-	handoffCh            chan struct{}
+	handoffCh            chan struct{} // 由用户消息触发
 	highPriorityMsgQueue *list.List
 	lowPriorityMsgQueue  *list.List
 	msgQueueLock         sync.Mutex
@@ -178,7 +178,7 @@ func newMemberlist(conf *Config) (*Memberlist, error) {
 			conf.AdvertisePort = port
 			logger.Printf("[DEBUG] memberlist: Using dynamic bind port %d", port)
 		}
-		transport = nt
+		transport = nt // 获取transport配置
 	}
 
 	nodeAwareTransport, ok := transport.(NodeAwareTransport)
@@ -193,29 +193,29 @@ func newMemberlist(conf *Config) (*Memberlist, error) {
 		leaveBroadcast:       make(chan struct{}, 1),
 		transport:            nodeAwareTransport,
 		handoffCh:            make(chan struct{}, 1),
-		highPriorityMsgQueue: list.New(),
+		highPriorityMsgQueue: list.New(), // 高优先级队列
 		lowPriorityMsgQueue:  list.New(),
-		nodeMap:              make(map[string]*nodeState),
-		nodeTimers:           make(map[string]*suspicion),
+		nodeMap:              make(map[string]*nodeState), // 节点map
+		nodeTimers:           make(map[string]*suspicion), // 怀疑节点map
 		awareness:            newAwareness(conf.AwarenessMaxMultiplier),
 		ackHandlers:          make(map[uint32]*ackHandler),
-		broadcasts:           &TransmitLimitedQueue{RetransmitMult: conf.RetransmitMult},
+		broadcasts:           &TransmitLimitedQueue{RetransmitMult: conf.RetransmitMult}, // 会将消息传播一定的次数
 		logger:               logger,
 	}
 	m.broadcasts.NumNodes = func() int {
-		return m.estNumNodes()
+		return m.estNumNodes() // 评估节点数量
 	}
 
 	// Get the final advertise address from the transport, which may need
 	// to see which address we bound to. We'll refresh this each time we
 	// send out an alive message.
-	if _, _, err := m.refreshAdvertise(); err != nil {
+	if _, _, err := m.refreshAdvertise(); err != nil { // 更新advertise的地址，如果为空则默认为0.0.0.0的默认地址
 		return nil, err
 	}
 
-	go m.streamListen()
-	go m.packetListen()
-	go m.packetHandler()
+	go m.streamListen() // 启动tcp连接的处理程序
+	go m.packetListen() // 启动udp的包处理
+	go m.packetHandler() // 启动用户消息的处理
 	return m, nil
 }
 
