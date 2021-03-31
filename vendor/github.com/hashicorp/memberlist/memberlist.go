@@ -225,7 +225,7 @@ func newMemberlist(conf *Config) (*Memberlist, error) {
 // After creating a Memberlist, the configuration given should not be
 // modified by the user anymore.
 func Create(conf *Config) (*Memberlist, error) {
-	m, err := newMemberlist(conf) // 创建新的memberlist
+	m, err := newMemberlist(conf) // 创建新的memberlist，同时在本机启动tcp和udp等相关的监听端口
 	if err != nil {
 		return nil, err
 	}
@@ -233,7 +233,7 @@ func Create(conf *Config) (*Memberlist, error) {
 		m.Shutdown()
 		return nil, err
 	}
-	m.schedule() // 对memberlist进行调度
+	m.schedule() // 启动各类定时任务执行，更新节点的集群状态
 	return m, nil
 }
 
@@ -407,10 +407,10 @@ func (m *Memberlist) resolveAddr(hostStr string) ([]ipPort, error) {
 // setAlive is used to mark this node as being alive. This is the same
 // as if we received an alive notification our own network channel for
 // ourself.
-func (m *Memberlist) setAlive() error {
+func (m *Memberlist) setAlive() error { // 将该节点标记为存活状态
 	// Get the final advertise address from the transport, which may need
 	// to see which address we bound to.
-	addr, port, err := m.refreshAdvertise()
+	addr, port, err := m.refreshAdvertise() // 刷新地址
 	if err != nil {
 		return err
 	}

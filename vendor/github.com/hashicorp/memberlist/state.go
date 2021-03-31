@@ -116,7 +116,7 @@ func (m *Memberlist) schedule() { // 周期性调度
 	stopCh := make(chan struct{})
 
 	// Create a new probeTicker
-	if m.config.ProbeInterval > 0 {
+	if m.config.ProbeInterval > 0 { // 失败检测方法
 		t := time.NewTicker(m.config.ProbeInterval)
 		go m.triggerFunc(m.config.ProbeInterval, t.C, stopCh, m.probe) // 一段时间内触发probe方法
 		m.tickers = append(m.tickers, t)
@@ -137,7 +137,7 @@ func (m *Memberlist) schedule() { // 周期性调度
 	// If we made any tickers, then record the stopTick channel for
 	// later.
 	if len(m.tickers) > 0 {
-		m.stopTick = stopCh
+		m.stopTick = stopCh // 
 	}
 }
 
@@ -641,6 +641,7 @@ func (m *Memberlist) pushPull() {
 	}
 	node := nodes[0]
 
+	// 随机选择集群中一个节点交换状态
 	// Attempt a push pull
 	if err := m.pushPullNode(node.FullAddress(), false); err != nil {
 		m.logger.Printf("[ERR] memberlist: Push/Pull with %s failed: %s", node.Name, err)
@@ -917,6 +918,7 @@ func (m *Memberlist) refute(me *nodeState, accusedInc uint32) {
 			me.DMin, me.DMax, me.DCur,
 		},
 	}
+	// 广播发送节点存活的消息
 	m.encodeAndBroadcast(me.Addr.String(), aliveMsg, a)
 }
 
@@ -977,7 +979,7 @@ func (m *Memberlist) aliveNode(a *alive, notify chan struct{}, bootstrap bool) {
 	// Check if we've never seen this node before, and if not, then
 	// store this node in our node map.
 	var updatesNode bool
-	if !ok {
+	if !ok { // 检查是否之前包含该节点
 		errCon := m.config.IPAllowed(a.Addr)
 		if errCon != nil {
 			m.logger.Printf("[WARN] memberlist: Rejected node %s (%v): %s", a.Node, net.IP(a.Addr), errCon)
@@ -1012,7 +1014,7 @@ func (m *Memberlist) aliveNode(a *alive, notify chan struct{}, bootstrap bool) {
 		offset := randomOffset(n)
 
 		// Add at the end and swap with the node at the offset
-		m.nodes = append(m.nodes, state)
+		m.nodes = append(m.nodes, state) // 配置相关的节点
 		m.nodes[offset], m.nodes[n] = m.nodes[n], m.nodes[offset]
 
 		// Update numNodes after we've added a new node
@@ -1020,7 +1022,7 @@ func (m *Memberlist) aliveNode(a *alive, notify chan struct{}, bootstrap bool) {
 	} else {
 		// Check if this address is different than the existing node unless the old node is dead.
 		if !bytes.Equal([]byte(state.Addr), a.Addr) || state.Port != a.Port { // 通过IP与端口号判断是否是同一个节点信息
-			errCon := m.config.IPAllowed(a.Addr)
+			errCon := m.config.IPAllowed(a.Addr) // 非同一个节点
 			if errCon != nil {
 				m.logger.Printf("[WARN] memberlist: Rejected IP update from %v to %v for node %s: %s", a.Node, state.Addr, net.IP(a.Addr), errCon)
 				return
@@ -1046,7 +1048,7 @@ func (m *Memberlist) aliveNode(a *alive, notify chan struct{}, bootstrap bool) {
 						Port: a.Port,
 						Meta: a.Meta,
 					}
-					m.config.Conflict.NotifyConflict(&state.Node, &other)
+					m.config.Conflict.NotifyConflict(&state.Node, &other) // 命名冲突
 				}
 				return
 			}
@@ -1095,7 +1097,7 @@ func (m *Memberlist) aliveNode(a *alive, notify chan struct{}, bootstrap bool) {
 			bytes.Equal(a.Vsn, versions) {
 			return
 		}
-		m.refute(state, a.Incarnation)
+		m.refute(state, a.Incarnation) // 校验相同节点的状态
 		m.logger.Printf("[WARN] memberlist: Refuting an alive message for '%s' (%v:%d) meta:(%v VS %v), vsn:(%v VS %v)", a.Node, net.IP(a.Addr), a.Port, a.Meta, state.Meta, a.Vsn, versions)
 	} else {
 		m.encodeBroadcastNotify(a.Node, aliveMsg, a, notify)
@@ -1128,11 +1130,11 @@ func (m *Memberlist) aliveNode(a *alive, notify chan struct{}, bootstrap bool) {
 	if m.config.Events != nil {
 		if oldState == StateDead || oldState == StateLeft {
 			// if Dead/Left -> Alive, notify of join
-			m.config.Events.NotifyJoin(&state.Node)
+			m.config.Events.NotifyJoin(&state.Node) // 通知join
 
 		} else if !bytes.Equal(oldMeta, state.Meta) {
 			// if Meta changed, trigger an update notification
-			m.config.Events.NotifyUpdate(&state.Node)
+			m.config.Events.NotifyUpdate(&state.Node) // 通知状态更新
 		}
 	}
 }
