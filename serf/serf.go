@@ -456,7 +456,7 @@ func (s *Serf) KeyManager() *KeyManager {
 // name and payload. If the configured size limit is exceeded and error will be returned.
 // If coalesce is enabled, nodes are allowed to coalesce this event.
 // Coalescing is only available starting in v0.2
-func (s *Serf) UserEvent(name string, payload []byte, coalesce bool) error {
+func (s *Serf) UserEvent(name string, payload []byte, coalesce bool) error { // 广播event事件
 	payloadSizeBeforeEncoding := len(name) + len(payload)
 
 	// Check size before encoding to prevent needless encoding and return early if it's over the specified limit.

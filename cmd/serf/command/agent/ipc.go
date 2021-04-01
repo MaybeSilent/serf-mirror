@@ -46,6 +46,7 @@ const (
 	MaxIPCVersion = 1
 )
 
+// serf节点收到的命令类型
 const (
 	handshakeCommand       = "handshake"
 	eventCommand           = "event"
@@ -478,15 +479,15 @@ func (i *AgentIPC) handleRequest(client *IPCClient, reqHeader *requestHeader) er
 	// Dispatch command specific handlers
 	switch command {
 	case handshakeCommand:
-		return i.handleHandshake(client, seq)
+		return i.handleHandshake(client, seq)// serf的handshake返回version版本号
 
 	case authCommand:
-		return i.handleAuth(client, seq)
+		return i.handleAuth(client, seq) // 将client的didAuth置为true
 
-	case eventCommand:
+	case eventCommand: // 处理event命令
 		return i.handleEvent(client, seq)
 
-	case membersCommand, membersFilteredCommand:
+	case membersCommand, membersFilteredCommand: // 处理members命令
 		return i.handleMembers(client, command, seq)
 
 	case streamCommand: // "stream"命令
@@ -498,7 +499,7 @@ func (i *AgentIPC) handleRequest(client *IPCClient, reqHeader *requestHeader) er
 	case stopCommand: // "stop"命令
 		return i.handleStop(client, seq)
 
-	case forceLeaveCommand:
+	case forceLeaveCommand: // 处理force-leave命令
 		return i.handleForceLeave(client, seq)
 
 	case joinCommand: // "join" join节点
@@ -688,6 +689,7 @@ func (i *AgentIPC) handleMembers(client *IPCClient, command string, seq uint64) 
 	return client.Send(&header, &resp) // 返回对应的members处理
 }
 
+// 对加入的节点信息进行过滤
 func (i *AgentIPC) filterMembers(members []serf.Member, tags map[string]string,
 	status string, name string) ([]serf.Member, error) {
 
