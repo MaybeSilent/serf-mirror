@@ -4,7 +4,8 @@ package memberlist
 // notifications about members joining and leaving. The methods in this
 // delegate may be called by multiple goroutines, but never concurrently.
 // This allows you to reason about ordering.
-type EventDelegate interface {
+// 收到节点Join或者Leave的时候会被触发
+type EventDelegate interface { // 会被多线程调度，但是不会并发
 	// NotifyJoin is invoked when a node is detected to have joined.
 	// The Node argument must not be modified.
 	NotifyJoin(*Node)

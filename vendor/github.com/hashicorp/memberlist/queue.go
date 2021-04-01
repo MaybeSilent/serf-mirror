@@ -418,6 +418,6 @@ func (q *TransmitLimitedQueue) Prune(maxRetain int) { // 对大于maxRetain的�
 		}
 		cur := item.(*limitedBroadcast)
 		cur.b.Finished()
-		q.deleteItem(cur)
+		q.deleteItem(cur) // 对最新的消息进行保留
 	}
 }

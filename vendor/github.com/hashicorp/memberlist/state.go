@@ -228,7 +228,7 @@ START:
 	// Handle the wrap around case
 	if m.probeIndex >= len(m.nodes) {
 		m.nodeLock.RUnlock()
-		m.resetNodes()
+		m.resetNodes() // 对节点进行清理
 		m.probeIndex = 0
 		numCheck++
 		goto START
@@ -241,7 +241,7 @@ START:
 	node = *m.nodes[m.probeIndex]
 	if node.Name == m.config.Name {
 		skip = true
-	} else if node.DeadOrLeft() {
+	} else if node.DeadOrLeft() { // 离开状态或者损失状态的节点
 		skip = true
 	}
 

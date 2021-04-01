@@ -60,6 +60,7 @@ type messageLeave struct {
 
 // messagePushPullType is used when doing a state exchange. This
 // is a relatively large message, but is sent infrequently
+// 信息交换时发送的内容
 type messagePushPull struct {
 	LTime        LamportTime            // Current node lamport time
 	StatusLTimes map[string]LamportTime // Maps the node to its status time

@@ -304,7 +304,7 @@ func (c *Command) setupAgent(config *Config, logOutput io.Writer) *Agent {
 	serfConfig := serf.DefaultConfig() // 获取serf的默认配置
 	switch config.Profile { // 默认配置为局域网lan
 	case "lan":
-		serfConfig.MemberlistConfig = memberlist.DefaultLANConfig()
+		serfConfig.MemberlistConfig = memberlist.DefaultLANConfig() //设置memberlist的相关配置
 	case "wan":
 		serfConfig.MemberlistConfig = memberlist.DefaultWANConfig()
 	case "local":
@@ -414,7 +414,7 @@ func (c *Command) startAgent(config *Config, agent *Agent,
 	agent.RegisterEventHandler(c.scriptHandler) // 注册配置的handler处理脚本
 
 	// Start the agent after the handler is registered
-	if err := agent.Start(); err != nil {
+	if err := agent.Start(); err != nil { //
 		c.Ui.Error(fmt.Sprintf("Failed to start the Serf agent: %v", err))
 		return nil
 	}
@@ -432,7 +432,7 @@ func (c *Command) startAgent(config *Config, agent *Agent,
 		iface, _ := config.NetworkInterface()
 
 		_, err := NewAgentMDNS(agent, logOutput, config.ReplayOnJoin,
-			config.NodeName, config.Discover, iface, local.Addr, int(local.Port))
+			config.NodeName, config.Discover, iface, local.Addr, int(local.Port)) // 通过mdns进行服务发现
 		if err != nil {
 			c.Ui.Error(fmt.Sprintf("Error starting mDNS listener: %s", err))
 			return nil
@@ -449,6 +449,7 @@ func (c *Command) startAgent(config *Config, agent *Agent,
 
 	// Start the IPC layer
 	c.Ui.Output("Starting Serf agent RPC...")
+	// 对rpc的addr进行监听
 	ipc := NewAgentIPC(agent, config.RPCAuthKey, rpcListener, logOutput, logWriter) // 创建ipc间交互的实例，在其中进行监听
 
 	c.Ui.Output("Serf agent running!")
@@ -480,6 +481,7 @@ func (c *Command) startupJoin(config *Config, agent *Agent) error {
 	}
 
 	c.Ui.Output(fmt.Sprintf("Joining cluster...(replay: %v)", config.ReplayOnJoin))
+	// 调用agent的join方法，选择是否重放相关事件
 	n, err := agent.Join(config.StartJoin, config.ReplayOnJoin)
 	if err != nil {
 		return err
@@ -491,6 +493,7 @@ func (c *Command) startupJoin(config *Config, agent *Agent) error {
 
 // retryJoin is invoked to handle joins with retries. This runs until at least a
 // single successful join or RetryMaxAttempts is reached
+// 具有retry功能的join方法
 func (c *Command) retryJoin(config *Config, agent *Agent, errCh chan struct{}) {
 	// Quit fast if there is no nodes to join
 	if len(config.RetryJoin) == 0 {
@@ -583,21 +586,21 @@ func (c *Command) Run(args []string) int {
 	}
 
 	// Setup serf
-	agent := c.setupAgent(config, logOutput)
+	agent := c.setupAgent(config, logOutput) // 设置serf的监听地址等，初始化memberlist的相关配置
 	if agent == nil {
 		return 1
 	}
 	defer agent.Shutdown()
 
 	// Start the agent
-	ipc := c.startAgent(config, agent, logWriter, logOutput)
+	ipc := c.startAgent(config, agent, logWriter, logOutput) // 启动agent
 	if ipc == nil {
 		return 1
 	}
 	defer ipc.Shutdown() // 关闭资源，打开的监听端口等
 
 	// Join startup nodes if specified
-	if err := c.startupJoin(config, agent); err != nil {
+	if err := c.startupJoin(config, agent); err != nil { // 开始
 		c.Ui.Error(err.Error())
 		return 1
 	}
@@ -609,7 +612,7 @@ func (c *Command) Run(args []string) int {
 
 	// Start the retry joins
 	retryJoinCh := make(chan struct{})
-	go c.retryJoin(config, agent, retryJoinCh) //
+	go c.retryJoin(config, agent, retryJoinCh) // 进行带有重试的join
 
 	// Wait for exit
 	return c.handleSignals(config, agent, retryJoinCh) // 等待退出的系统信号

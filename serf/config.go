@@ -92,6 +92,7 @@ type Config struct {
 	UserCoalescePeriod  time.Duration
 	UserQuiescentPeriod time.Duration
 
+	// 失败重连节点相关配置
 	// The settings below relate to Serf keeping track of recently
 	// failed/left nodes and attempting reconnects.
 	//
@@ -103,10 +104,10 @@ type Config struct {
 	// to a reasonable default.
 	//
 	// ReconnectTimeout is the amount of time to attempt to reconnect to
-	// a failed node before giving up and considering it completely gone.
+	// a failed node before giving up and considering it completely gone. // 对失败节点进行重新连接
 	//
 	// TombstoneTimeout is the amount of time to keep around nodes
-	// that gracefully left as tombstones for syncing state with other
+	// that gracefully left as tombstones for syncing state with other // 对leave状态节点的超时时间
 	// Serf nodes.
 	ReapInterval      time.Duration
 	ReconnectInterval time.Duration

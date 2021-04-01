@@ -204,7 +204,7 @@ func (d *delegate) LocalState(join bool) []byte {
 	}
 	return buf
 }
-
+// 合并远程的状态
 func (d *delegate) MergeRemoteState(buf []byte, isJoin bool) {
 	// Ensure we have a message
 	if len(buf) == 0 {
@@ -273,7 +273,7 @@ func (d *delegate) MergeRemoteState(buf []byte, isJoin bool) {
 	// then we set the eventMinTime to the EventLTime. This
 	// prevents any of the incoming events from being processed
 	eventJoinIgnore := d.serf.eventJoinIgnore.Load().(bool)
-	if isJoin && eventJoinIgnore {
+	if isJoin && eventJoinIgnore { // join的时候，重放过去的event
 		d.serf.eventLock.Lock()
 		if pp.EventLTime > d.serf.eventMinTime {
 			d.serf.eventMinTime = pp.EventLTime

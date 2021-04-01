@@ -387,7 +387,7 @@ func (i *AgentIPC) listen() {
 			pendingQueries: make(map[uint64]*serf.Query),
 		}
 		client.dec = codec.NewDecoder(client.reader, // msgpack协议进行节点间通信
-			&codec.MsgpackHandle{RawToString: true, WriteExt: true}) //
+			&codec.MsgpackHandle{RawToString: true, WriteExt: true})
 		client.enc = codec.NewEncoder(client.writer,
 			&codec.MsgpackHandle{RawToString: true, WriteExt: true})
 
@@ -395,7 +395,7 @@ func (i *AgentIPC) listen() {
 		i.Lock()
 		if !i.stop {
 			i.clients[client.name] = client
-			go i.handleClient(client)
+			go i.handleClient(client) // 处理收到的命令请求
 		} else {
 			conn.Close()
 		}

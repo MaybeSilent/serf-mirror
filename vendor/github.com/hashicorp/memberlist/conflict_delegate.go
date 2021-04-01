@@ -4,7 +4,7 @@ package memberlist
 // a node has attempted to join which would result in a
 // name conflict. This happens if two clients are configured
 // with the same name but different addresses.
-type ConflictDelegate interface {
+type ConflictDelegate interface { // 节点命名冲突
 	// NotifyConflict is invoked when a name conflict is detected
 	NotifyConflict(existing, other *Node)
 }
