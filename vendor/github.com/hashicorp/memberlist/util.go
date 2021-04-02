@@ -122,7 +122,7 @@ func moveDeadNodes(nodes []*nodeState, gossipToTheDeadTime time.Duration) int {
 // kRandomNodes is used to select up to k random nodes, excluding any nodes where
 // the filter function returns true. It is possible that less than k nodes are
 // returned.
-func kRandomNodes(k int, nodes []*nodeState, filterFn func(*nodeState) bool) []*nodeState {
+func kRandomNodes(k int, nodes []*nodeState, filterFn func(*nodeState) bool) []*nodeState { // 随机获取k个随机节点
 	n := len(nodes)
 	kNodes := make([]*nodeState, 0, k)
 OUTER:

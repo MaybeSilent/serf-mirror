@@ -455,6 +455,7 @@ func (i *AgentIPC) handleClient(client *IPCClient) {
 	}
 }
 
+// 高级层面的命令处理，在memberlist上进行了封装
 // handleRequest is used to evaluate a single client command
 func (i *AgentIPC) handleRequest(client *IPCClient, reqHeader *requestHeader) error { // 处理相应的 request 请求
 	// Look for a command field
@@ -519,13 +520,13 @@ func (i *AgentIPC) handleRequest(client *IPCClient, reqHeader *requestHeader) er
 	case removeKeyCommand:
 		return i.handleRemoveKey(client, seq)
 
-	case listKeysCommand:
+	case listKeysCommand: //
 		return i.handleListKeys(client, seq)
 
 	case tagsCommand:
 		return i.handleTags(client, seq)
 
-	case queryCommand:
+	case queryCommand: //
 		return i.handleQuery(client, seq)
 
 	case respondCommand:

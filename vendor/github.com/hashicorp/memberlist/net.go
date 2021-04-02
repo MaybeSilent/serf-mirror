@@ -39,7 +39,7 @@ const (
 
 // messageType is an integer ID of a type of message that can be received
 // on network channels from other members.
-type messageType uint8
+type messageType uint8 // 消息的指定类型
 
 // The list of available message types.
 const (
@@ -802,6 +802,7 @@ func (m *Memberlist) rawSendMsgPacket(a Address, node *Node, msg []byte) error {
 	}
 
 	metrics.IncrCounter([]string{"memberlist", "udp", "sent"}, float32(len(msg)))
+	// m.logger.Printf("[MaybeSilent] gossip send node content : %s", string(msg))
 	_, err := m.transport.WriteToAddress(msg, a)
 	return err
 }

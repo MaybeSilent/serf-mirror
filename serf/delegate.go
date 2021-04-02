@@ -229,7 +229,8 @@ func (d *delegate) MergeRemoteState(buf []byte, isJoin bool) {
 		d.serf.logger.Printf("[ERR] serf: Failed to decode remote state: %v", err)
 		return
 	}
-
+	// userEvent是长度为512的切片
+	// d.serf.logger.Printf("[MaybeSilent] delegate MergeRemoteState : %v", pp)
 	// Witness the Lamport clocks first.
 	// We subtract 1 since no message with that clock has been sent yet
 	if pp.LTime > 0 {

@@ -167,7 +167,7 @@ func (m *Memberlist) triggerFunc(stagger time.Duration, C <-chan time.Time, stop
 // timer is dynamically scaled based on cluster size to avoid network
 // saturation
 func (m *Memberlist) pushPullTrigger(stop <-chan struct{}) {
-	interval := m.config.PushPullInterval // pushPull的时间间隔
+	interval := m.config.PushPullInterval // pushPull的时间间隔，局域网内配置为30s一次
 
 	// Use a random stagger to avoid syncronizing
 	randStagger := time.Duration(uint64(rand.Int63()) % uint64(interval))
@@ -216,6 +216,7 @@ func (m *Memberlist) deschedule() { // 通过
 func (m *Memberlist) probe() {
 	// Track the number of indexes we've considered probing
 	numCheck := 0 // 进行失败检测
+	//m.logger.Printf("[MaybeSilent] start probe") // 局域网环境下默认500ms进行错误检测
 START:
 	m.nodeLock.RLock()
 
@@ -325,6 +326,7 @@ func (m *Memberlist) probeNode(node *nodeState) {
 		m.awareness.ApplyDelta(awarenessDelta)
 	}()
 	// ping的节点仅有两种状态StateSuspect与StateAlive
+	// m.logger.Printf("[MaybeSilent] ping msg: %v", ping) ping信息包含了seqNo与NodeName等
 	if node.State == StateAlive {
 		if err := m.encodeAndSendMsg(node.FullAddress(), pingMsg, &ping); err != nil {
 			m.logger.Printf("[ERR] memberlist: Failed to send ping: %s", err)
@@ -572,7 +574,8 @@ func (m *Memberlist) resetNodes() { //
 // 发送gossip message给其余节点
 func (m *Memberlist) gossip() { // gossip为同步信息
 	defer metrics.MeasureSince([]string{"memberlist", "gossip"}, time.Now())
-
+	
+	// m.logger.Printf("[MaybeSilent] start gossip") // 局域网内调用频率为200ms
 	// Get some random live, suspect, or recently dead nodes
 	m.nodeLock.RLock()
 	kNodes := kRandomNodes(m.config.GossipNodes, m.nodes, func(n *nodeState) bool {
@@ -581,7 +584,7 @@ func (m *Memberlist) gossip() { // gossip为同步信息
 		}
 
 		switch n.State {
-		case StateAlive, StateSuspect: // alive和suspect的节点不发送
+		case StateAlive, StateSuspect: // gossip信息发送往alive和suspect的节点
 			return false
 
 		case StateDead: // 死亡状态的节点
@@ -598,6 +601,7 @@ func (m *Memberlist) gossip() { // gossip为同步信息
 	if m.config.EncryptionEnabled() {
 		bytesAvail -= encryptOverhead(m.encryptionVersion()) // 加解密的场景下，增加加解密需要的字段
 	}
+	// m.logger.Printf("[MaybeSilent] gossip nodes : %v", kNodes) // 局域网内调用频率为200ms
 
 	for _, node := range kNodes {
 		// Get any pending broadcasts
@@ -628,6 +632,7 @@ func (m *Memberlist) gossip() { // gossip为同步信息
 // with the other node.
 func (m *Memberlist) pushPull() {
 	// Get a random live node
+	// m.logger.Printf("[MaybeSilent] start push Pull Node")
 	m.nodeLock.RLock()
 	nodes := kRandomNodes(1, m.nodes, func(n *nodeState) bool {
 		return n.Name == m.config.Name ||
@@ -654,10 +659,12 @@ func (m *Memberlist) pushPullNode(a Address, join bool) error {
 	defer metrics.MeasureSince([]string{"memberlist", "pushPullNode"}, time.Now())
 
 	// Attempt to send and receive with the node
+	m.logger.Printf("[MaybeSilent] send And receive Addr : %s, name : %s", a.Addr , a.Name)
 	remote, userState, err := m.sendAndReceiveState(a, join)
 	if err != nil {
 		return err
 	}
+	// m.logger.Printf("[MaybeSilent] remote : %v, userState : %v", remote, string(userState))
 
 	if err := m.mergeRemoteState(join, remote, userState); err != nil { // 合并远端的集群信息
 		return err
