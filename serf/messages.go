@@ -11,6 +11,7 @@ import (
 // messageType are the types of gossip messages Serf will send along
 // memberlist.
 type messageType uint8
+
 // 消息种类
 const (
 	messageLeaveType messageType = iota

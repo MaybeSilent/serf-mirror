@@ -287,7 +287,7 @@ func (c *Command) setupAgent(config *Config, logOutput io.Writer) *Agent {
 
 	var advertiseIP string
 	var advertisePort int
-	if config.AdvertiseAddr != "" {  // 默认配置为空
+	if config.AdvertiseAddr != "" { // 默认配置为空
 		advertiseIP, advertisePort, err = config.AddrParts(config.AdvertiseAddr)
 		if err != nil {
 			c.Ui.Error(fmt.Sprintf("Invalid advertise address: %s", err))
@@ -302,7 +302,7 @@ func (c *Command) setupAgent(config *Config, logOutput io.Writer) *Agent {
 	}
 
 	serfConfig := serf.DefaultConfig() // 获取serf的默认配置
-	switch config.Profile { // 默认配置为局域网lan
+	switch config.Profile {            // 默认配置为局域网lan
 	case "lan":
 		serfConfig.MemberlistConfig = memberlist.DefaultLANConfig() //设置memberlist的相关配置
 	case "wan":
@@ -424,7 +424,7 @@ func (c *Command) startAgent(config *Config, agent *Agent,
 	bindAddr := &net.TCPAddr{IP: net.ParseIP(bindIP), Port: bindPort}
 
 	// Start the discovery layer
-	if config.Discover != "" {  // 启动服务发现层
+	if config.Discover != "" { // 启动服务发现层
 		// Use the advertise addr and port
 		local := agent.Serf().Memberlist().LocalNode()
 
@@ -441,7 +441,7 @@ func (c *Command) startAgent(config *Config, agent *Agent,
 	}
 
 	// Setup the RPC listener
-	rpcListener, err := net.Listen("tcp", config.RPCAddr)   // 监听RPC地址
+	rpcListener, err := net.Listen("tcp", config.RPCAddr) // 监听RPC地址
 	if err != nil {
 		c.Ui.Error(fmt.Sprintf("Error starting RPC listener: %s", err))
 		return nil

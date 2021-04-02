@@ -63,7 +63,7 @@ func Create(agentConf *Config, conf *serf.Config, logOutput io.Writer) (*Agent, 
 	conf.EventCh = eventCh
 
 	// Setup the agent
-	agent := &Agent{					 // 启动相关的agent
+	agent := &Agent{ // 启动相关的agent
 		conf:          conf,
 		agentConf:     agentConf,
 		eventCh:       eventCh,
@@ -261,12 +261,12 @@ func (a *Agent) eventLoop() {
 				eh.HandleEvent(e)
 			}
 
-		case <-serfShutdownCh:	// serf关闭的channel
+		case <-serfShutdownCh: // serf关闭的channel
 			a.logger.Printf("[WARN] agent: Serf shutdown detected, quitting")
 			a.Shutdown()
 			return
 
-		case <-a.shutdownCh:	//
+		case <-a.shutdownCh: //
 			return
 		}
 	}

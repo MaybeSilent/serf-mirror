@@ -283,7 +283,7 @@ func failedRemote(err error) bool {
 
 // probeNode handles a single round of failure checking on a node.
 func (m *Memberlist) probeNode(node *nodeState) {
-	defer metrics.MeasureSince([]string{"memberlist", "probeNode"}, time.Now())
+	defer metrics.MeasureSince([]string{"memberlist", "probeNode"}, time.Now()) // 
 
 	// We use our health awareness to scale the overall probe interval, so we
 	// slow down if we detect problems. The ticker that calls us can handle

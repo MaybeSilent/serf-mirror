@@ -458,7 +458,7 @@ func (i *AgentIPC) handleClient(client *IPCClient) {
 // handleRequest is used to evaluate a single client command
 func (i *AgentIPC) handleRequest(client *IPCClient, reqHeader *requestHeader) error { // 处理相应的 request 请求
 	// Look for a command field
-	command := reqHeader.Command	// 解析成command 与 Seq
+	command := reqHeader.Command // 解析成command 与 Seq
 	seq := reqHeader.Seq
 
 	// Ensure the handshake is performed before other commands
@@ -481,7 +481,7 @@ func (i *AgentIPC) handleRequest(client *IPCClient, reqHeader *requestHeader) er
 	// Dispatch command specific handlers
 	switch command {
 	case handshakeCommand:
-		return i.handleHandshake(client, seq)// serf的handshake返回version版本号
+		return i.handleHandshake(client, seq) // serf的handshake返回version版本号
 
 	case authCommand:
 		return i.handleAuth(client, seq) // 将client的didAuth置为true

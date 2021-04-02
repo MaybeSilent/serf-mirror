@@ -34,13 +34,16 @@ fi
 
 # Build!
 echo "==> Building..."
+# mod增加vendor参数，go build的时候会重新编译修改的本地vendor
 gox \
     -os="${XC_OS}" \
     -osarch="!darwin/arm" \
     -arch="${XC_ARCH}" \
+    -mod="vendor" \
     -ldflags "-X ${GIT_IMPORT}.GitCommit='${GIT_COMMIT}${GIT_DIRTY}'" \
     -output "pkg/{{.OS}}_{{.Arch}}/serf" \
     ./cmd/serf/
+
 
 # Move all the compiled things to the $GOPATH/bin
 GOPATH=${GOPATH:-$(go env GOPATH)}

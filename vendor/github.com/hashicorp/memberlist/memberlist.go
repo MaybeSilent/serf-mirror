@@ -225,11 +225,11 @@ func newMemberlist(conf *Config) (*Memberlist, error) {
 // After creating a Memberlist, the configuration given should not be
 // modified by the user anymore.
 func Create(conf *Config) (*Memberlist, error) {
-	conf.Logger.Printf("[MaybeSilent] Serf Create")
 	m, err := newMemberlist(conf) // 创建新的memberlist，同时在本机启动tcp和udp等相关的监听端口
 	if err != nil {
 		return nil, err
 	}
+	m.logger.Printf("[MaybeSilent] Serf Create")
 	if err := m.setAlive(); err != nil {
 		m.Shutdown()
 		return nil, err

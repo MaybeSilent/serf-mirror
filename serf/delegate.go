@@ -204,6 +204,7 @@ func (d *delegate) LocalState(join bool) []byte {
 	}
 	return buf
 }
+
 // 合并远程的状态
 func (d *delegate) MergeRemoteState(buf []byte, isJoin bool) {
 	// Ensure we have a message

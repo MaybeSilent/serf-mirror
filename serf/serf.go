@@ -72,7 +72,7 @@ type Serf struct {
 	config        *Config
 	failedMembers []*memberState
 	leftMembers   []*memberState
-	memberlist    *memberlist.Memberlist  //
+	memberlist    *memberlist.Memberlist //
 	memberLock    sync.RWMutex
 	members       map[string]*memberState // serf中的所有节点，包含了leave状态和fail状态的节点
 
@@ -267,10 +267,10 @@ func Create(conf *Config) (*Serf, error) {
 	serf := &Serf{
 		config:        conf,
 		logger:        logger,
-		members:       make(map[string]*memberState),			// 成员，成员状态
-		queryResponse: make(map[LamportTime]*QueryResponse),	// 查询结果
-		shutdownCh:    make(chan struct{}), // 关闭节点
-		state:         SerfAlive, // serf节点状态
+		members:       make(map[string]*memberState),        // 成员，成员状态
+		queryResponse: make(map[LamportTime]*QueryResponse), // 查询结果
+		shutdownCh:    make(chan struct{}),                  // 关闭节点
+		state:         SerfAlive,                            // serf节点状态
 	}
 	serf.eventJoinIgnore.Store(false)
 
@@ -368,7 +368,7 @@ func Create(conf *Config) (*Serf, error) {
 	}
 
 	// Create the buffer for recent intents
-	serf.recentIntents = make(map[string]nodeIntent)		// 节点的lamport时钟map
+	serf.recentIntents = make(map[string]nodeIntent) // 节点的lamport时钟map
 
 	// Create a buffer for events and queries
 	serf.eventBuffer = make([]*userEvents, conf.EventBuffer) // event与query的buff
@@ -419,8 +419,8 @@ func Create(conf *Config) (*Serf, error) {
 
 	// Start the background tasks. See the documentation above each method
 	// for more information on their role.
-	go serf.handleReap() // 定时清理任务
-	go serf.handleReconnect() // 节点间重新连接
+	go serf.handleReap()                               // 定时清理任务
+	go serf.handleReconnect()                          // 节点间重新连接
 	go serf.checkQueueDepth("Intent", serf.broadcasts) // 检查事件队列深度
 	go serf.checkQueueDepth("Event", serf.eventBroadcasts)
 	go serf.checkQueueDepth("Query", serf.queryBroadcasts)
@@ -509,7 +509,7 @@ func (s *Serf) UserEvent(name string, payload []byte, coalesce bool) error { // 
 	// Process update locally
 	s.handleUserEvent(&msg) // 在本地进行event的处理
 
-	s.eventBroadcasts.QueueBroadcast(&broadcast{  // 进行消息的广播
+	s.eventBroadcasts.QueueBroadcast(&broadcast{ // 进行消息的广播
 		msg: raw,
 	})
 	return nil
@@ -1554,9 +1554,9 @@ func (s *Serf) handleReap() {
 		select {
 		case <-time.After(s.config.ReapInterval): // 发送失败的members与left状态的members
 			s.memberLock.Lock()
-			now := time.Now() // 传入当前时间戳参数
+			now := time.Now()                                                         // 传入当前时间戳参数
 			s.failedMembers = s.reap(s.failedMembers, now, s.config.ReconnectTimeout) // 对失败节点进行删除等
-			s.leftMembers = s.reap(s.leftMembers, now, s.config.TombstoneTimeout) 	  // 对leave状态的节点进行清理
+			s.leftMembers = s.reap(s.leftMembers, now, s.config.TombstoneTimeout)     // 对leave状态的节点进行清理
 			reapIntents(s.recentIntents, now, s.config.RecentIntentTimeout)
 			s.memberLock.Unlock()
 		case <-s.shutdownCh:
