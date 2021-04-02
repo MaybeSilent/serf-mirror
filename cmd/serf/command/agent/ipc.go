@@ -431,6 +431,7 @@ func (i *AgentIPC) deregisterClient(client *IPCClient) {
 func (i *AgentIPC) handleClient(client *IPCClient) {
 	defer i.deregisterClient(client)
 	var reqHeader requestHeader
+	i.logger.Printf("[MaybeSilent]: start handle client")
 	for {
 		// Decode the header
 		if err := client.dec.Decode(&reqHeader); err != nil {
@@ -446,6 +447,7 @@ func (i *AgentIPC) handleClient(client *IPCClient) {
 		}
 
 		// Evaluate the command
+		i.logger.Printf("[MaybeSilent]: receive reqHeader: %v", reqHeader)
 		if err := i.handleRequest(client, &reqHeader); err != nil {
 			i.logger.Printf("[ERR] agent.ipc: Failed to evaluate request: %v", err)
 			return
