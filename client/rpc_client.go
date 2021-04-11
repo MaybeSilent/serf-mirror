@@ -66,7 +66,7 @@ type RPCClient struct {
 	enc       *codec.Encoder // msgpack的编码器
 	writeLock sync.Mutex	 // 读写锁
 
-	dispatch     map[uint64]seqHandler
+	dispatch     map[uint64]seqHandler // client 理由，根据SEQ来进行路由
 	dispatchLock sync.Mutex
 
 	shutdown     bool		   // 关闭的标志位
@@ -617,6 +617,7 @@ func (qh *queryHandler) Handle(resp *responseHeader) {
 }
 
 func (qh *queryHandler) Cleanup() {
+	// 对相应的handler处理进行资源的关闭
 	if !qh.closed {
 		if !qh.init {
 			qh.init = true
@@ -743,7 +744,7 @@ func (c *RPCClient) genericRPC(header *requestHeader, req interface{}, resp inte
 			goto SEND_ERR
 		}
 		if resp != nil {
-			err := c.dec.Decode(resp)
+			err := c.dec.Decode(resp) // decode的时候，指定decode的结构体可以进行TCP流的读取
 			if err != nil {
 				errCh <- err
 				return
@@ -752,7 +753,7 @@ func (c *RPCClient) genericRPC(header *requestHeader, req interface{}, resp inte
 	SEND_ERR: // TAG:平时不常用，无论如何都会走到这里
 		errCh <- strToError(respHeader.Error)
 	}
-	c.handleSeq(header.Seq, &seqCallback{handler: handler})
+	c.handleSeq(header.Seq, &seqCallback{handler: handler}) // 通过SEQ来定位返回resp的处理
 	defer c.deregisterHandler(header.Seq)
 
 	// Send the request
