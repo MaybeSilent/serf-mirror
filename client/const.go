@@ -12,7 +12,7 @@ const (
 	maxIPCVersion = 1
 )
 
-const (
+const ( // client发送的serf命令类型
 	handshakeCommand       = "handshake"
 	eventCommand           = "event"
 	forceLeaveCommand      = "force-leave"
@@ -35,7 +35,7 @@ const (
 	getCoordinateCommand   = "get-coordinate"
 )
 
-const (
+const ( // serf错误提示
 	unsupportedCommand    = "Unsupported command"
 	unsupportedIPCVersion = "Unsupported IPC version"
 	duplicateHandshake    = "Handshake already performed"

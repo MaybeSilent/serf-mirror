@@ -16,24 +16,24 @@ import (
 
 const (
 	// This is the default IO timeout for the client
-	DefaultTimeout = 10 * time.Second
+	DefaultTimeout = 10 * time.Second // 超时时间
 )
 
 var (
 	clientClosed = fmt.Errorf("client closed")
 )
 
-type seqCallback struct {
+type seqCallback struct { // 实现seqhandler的接口
 	handler func(*responseHeader)
 }
 
 func (sc *seqCallback) Handle(resp *responseHeader) {
-	sc.handler(resp)
+	sc.handler(resp) // 对返回值进行处理
 }
 func (sc *seqCallback) Cleanup() {}
 
 // seqHandler interface is used to handle responses
-type seqHandler interface {
+type seqHandler interface { // handler接口
 	Handle(*responseHeader)
 	Cleanup()
 }
@@ -58,26 +58,26 @@ type Config struct {
 type RPCClient struct {
 	seq uint64
 
-	timeout   time.Duration
-	conn      *net.TCPConn
+	timeout   time.Duration // 超时时间，包括读写的超时
+	conn      *net.TCPConn  // 直接在tcp连接上，封装了msgpack的应用层协议
 	reader    *bufio.Reader
 	writer    *bufio.Writer
-	dec       *codec.Decoder
-	enc       *codec.Encoder
-	writeLock sync.Mutex
+	dec       *codec.Decoder // msgpack的解码器
+	enc       *codec.Encoder // msgpack的编码器
+	writeLock sync.Mutex	 // 读写锁
 
 	dispatch     map[uint64]seqHandler
 	dispatchLock sync.Mutex
 
-	shutdown     bool
-	shutdownCh   chan struct{}
+	shutdown     bool		   // 关闭的标志位
+	shutdownCh   chan struct{} // 关闭的channel
 	shutdownLock sync.Mutex
 }
 
 // send is used to send an object using the MsgPack encoding. send
 // is serialized to prevent write overlaps, while properly buffering.
 func (c *RPCClient) send(header *requestHeader, obj interface{}) error {
-	c.writeLock.Lock()
+	c.writeLock.Lock() // 发送之前需要加锁
 	defer c.writeLock.Unlock()
 
 	if c.shutdown {
@@ -95,12 +95,12 @@ func (c *RPCClient) send(header *requestHeader, obj interface{}) error {
 	}
 
 	if obj != nil {
-		if err := c.enc.Encode(obj); err != nil {
+		if err := c.enc.Encode(obj); err != nil { //
 			return err
 		}
 	}
 
-	if err := c.writer.Flush(); err != nil {
+	if err := c.writer.Flush(); err != nil { // writer刷新相应的header和obj等内容
 		return err
 	}
 
@@ -172,7 +172,7 @@ func (c *RPCClient) IsClosed() bool {
 }
 
 // Close is used to free any resources associated with the client
-func (c *RPCClient) Close() error {
+func (c *RPCClient) Close() error { //  调用了close方法
 	c.shutdownLock.Lock()
 	defer c.shutdownLock.Unlock()
 
@@ -749,7 +749,7 @@ func (c *RPCClient) genericRPC(header *requestHeader, req interface{}, resp inte
 				return
 			}
 		}
-	SEND_ERR:
+	SEND_ERR: // TAG:平时不常用，无论如何都会走到这里
 		errCh <- strToError(respHeader.Error)
 	}
 	c.handleSeq(header.Seq, &seqCallback{handler: handler})
@@ -831,7 +831,7 @@ func (c *RPCClient) listen() {
 	defer c.Close()
 	var respHeader responseHeader
 	for {
-		if err := c.dec.Decode(&respHeader); err != nil {
+		if err := c.dec.Decode(&respHeader); err != nil { // decode的时候会去读取conn的内容
 			if !c.shutdown {
 				log.Printf("[ERR] agent.client: Failed to decode response header: %v", err)
 			}
