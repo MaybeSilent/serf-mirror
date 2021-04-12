@@ -541,7 +541,7 @@ func (c *Command) Run(args []string) int {
 	}
 
 	// Setup the log outputs
-	logGate, logWriter, logOutput := c.setupLoggers(config)
+	logGate, logWriter, logOutput := c.setupLoggers(config) // logWriter 设置了缓冲区
 	if logWriter == nil {
 		return 1
 	}

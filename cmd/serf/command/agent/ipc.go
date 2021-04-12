@@ -48,7 +48,7 @@ const (
 
 // serf节点收到的命令类型
 const (
-	handshakeCommand       = "handshake"
+	handshakeCommand       = "handshake"  	// agent收到的ipc命令
 	eventCommand           = "event"
 	forceLeaveCommand      = "force-leave"
 	joinCommand            = "join"
@@ -241,7 +241,7 @@ type AgentIPC struct { // agent通信
 	sync.Mutex
 	agent     *Agent
 	authKey   string
-	clients   map[string]*IPCClient
+	clients   map[string]*IPCClient // 通信的各个clien
 	listener  net.Listener
 	logger    *log.Logger
 	logWriter *logWriter
@@ -259,7 +259,7 @@ type IPCClient struct {
 	enc          *codec.Encoder
 	writeLock    sync.Mutex
 	version      int32 // From the handshake, 0 before
-	logStreamer  *logStream
+	logStreamer  *logStream //
 	eventStreams map[uint64]*eventStream
 
 	pendingQueries map[uint64]*serf.Query
@@ -332,7 +332,7 @@ func NewAgentIPC(agent *Agent, authKey string, listener net.Listener,
 	if logOutput == nil {
 		logOutput = os.Stderr
 	}
-	ipc := &AgentIPC{
+	ipc := &AgentIPC{ // agent ipc 用于处理各类实例的命令等
 		agent:     agent,
 		authKey:   authKey,
 		clients:   make(map[string]*IPCClient),
@@ -356,9 +356,9 @@ func (i *AgentIPC) Shutdown() {
 
 	i.stop = true
 	close(i.stopCh)
-	i.listener.Close()
+	i.listener.Close() // 关闭listener
 
-	// Close the existing connections
+	// Close the existing connections // 关闭通信的各个client
 	for _, client := range i.clients {
 		client.conn.Close()
 	}
@@ -367,7 +367,7 @@ func (i *AgentIPC) Shutdown() {
 // listen is a long running routine that listens for new clients
 func (i *AgentIPC) listen() {
 	for {
-		conn, err := i.listener.Accept() // TCP监听地址
+		conn, err := i.listener.Accept() // TCP监听地址，进行TCP监听
 		if err != nil {
 			if i.stop {
 				return
@@ -395,7 +395,7 @@ func (i *AgentIPC) listen() {
 		// Register the client
 		i.Lock()
 		if !i.stop {
-			i.clients[client.name] = client
+			i.clients[client.name] = client // 一个远端地址一个对应的client进行通信处理
 			go i.handleClient(client) // 处理收到的命令请求
 		} else {
 			conn.Close()
@@ -482,6 +482,7 @@ func (i *AgentIPC) handleRequest(client *IPCClient, reqHeader *requestHeader) er
 	// Dispatch command specific handlers
 	switch command {
 	case handshakeCommand:
+		// handshake，在服务端上存储远端客户端的
 		return i.handleHandshake(client, seq) // serf的handshake返回version版本号
 
 	case authCommand:
@@ -867,6 +868,7 @@ SEND:
 	return client.Send(&resp, nil)
 }
 
+// monitor方式，可以观察agent输出的log内容
 func (i *AgentIPC) handleMonitor(client *IPCClient, seq uint64) error {
 	var req monitorRequest
 	if err := client.dec.Decode(&req); err != nil {

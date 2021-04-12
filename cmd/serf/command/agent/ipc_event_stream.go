@@ -13,7 +13,7 @@ type streamClient interface {
 }
 
 // eventStream is used to stream events to a client over IPC
-type eventStream struct {
+type eventStream struct { // 流式传输事件
 	client  streamClient
 	eventCh chan serf.Event
 	filters []EventFilter

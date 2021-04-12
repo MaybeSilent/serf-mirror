@@ -24,7 +24,7 @@ we can replay the various member events to recall a list of known
 nodes to re-join, as well as restore our clock values to avoid replaying
 old events.
 */
-
+// serf存储快照的内容
 const (
 	// flushInterval is how often we force a flush of the snapshot file
 	flushInterval = 500 * time.Millisecond

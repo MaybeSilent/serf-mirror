@@ -29,7 +29,7 @@ type AgentMDNS struct {
 
 // NewAgentMDNS is used to create a new AgentMDNS
 func NewAgentMDNS(agent *Agent, logOutput io.Writer, replay bool,
-	node, discover string, iface *net.Interface, bind net.IP, port int) (*AgentMDNS, error) {
+	node, discover string, iface *net.Interface, bind net.IP, port int) (*AgentMDNS, error) { // 返回agentMdns实例
 	// Create the service
 	service, err := mdns.NewMDNSService(
 		node,
@@ -80,7 +80,7 @@ func (m *AgentMDNS) run() {
 
 	for {
 		select {
-		case h := <-hosts:
+		case h := <-hosts: // 有新host加入
 			// Format the host address
 			addr := net.TCPAddr{IP: h.Addr, Port: h.Port}
 			addrS := addr.String()
@@ -94,7 +94,7 @@ func (m *AgentMDNS) run() {
 			join = append(join, addrS)
 			quiet = time.After(mdnsQuietInterval)
 
-		case <-quiet:
+		case <-quiet: // 隔一段时间后，agent自动join到mdns发现的实例中
 			// Attempt the join
 			n, err := m.agent.Join(join, m.replay)
 			if err != nil {
@@ -110,7 +110,7 @@ func (m *AgentMDNS) run() {
 			}
 			join = nil
 
-		case <-poll:
+		case <-poll: // 定时从mdns中poll相关的host内容
 			poll = time.After(mdnsPollInterval)
 			go m.poll(hosts)
 		}
