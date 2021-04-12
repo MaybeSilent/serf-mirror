@@ -12,11 +12,11 @@ import (
 
 // EventHandler is a handler that does things when events happen.
 type EventHandler interface {
-	HandleEvent(serf.Event)
+	HandleEvent(serf.Event) // 处理请求
 }
 
 // ScriptEventHandler invokes scripts for the events that it receives.
-type ScriptEventHandler struct {
+type ScriptEventHandler struct { // 接收到事件之时，可能会触发相应的脚本运行
 	SelfFunc func() serf.Member
 	Scripts  []EventScript
 	Logger   *log.Logger
@@ -39,12 +39,12 @@ func (h *ScriptEventHandler) HandleEvent(e serf.Event) {
 	}
 
 	self := h.SelfFunc()
-	for _, script := range h.Scripts {
-		if !script.Invoke(e) {
+	for _, script := range h.Scripts { // 遍历Scripts脚本
+		if !script.Invoke(e) { // 判断改event是否被过滤
 			continue
 		}
 
-		err := invokeEventScript(h.Logger, script.Script, self, e)
+		err := invokeEventScript(h.Logger, script.Script, self, e) // golang执行script脚本
 		if err != nil {
 			h.Logger.Printf("[ERR] agent: Error invoking script '%s': %s",
 				script.Script, err)
@@ -57,7 +57,7 @@ func (h *ScriptEventHandler) HandleEvent(e serf.Event) {
 func (h *ScriptEventHandler) UpdateScripts(scripts []EventScript) {
 	h.scriptLock.Lock()
 	defer h.scriptLock.Unlock()
-	h.newScripts = scripts
+	h.newScripts = scripts // 加锁，更新event的触发脚本
 }
 
 // EventFilter is used to filter which events are processed
@@ -122,7 +122,7 @@ func (s *EventFilter) Valid() bool {
 // EventScript is a single event script that will be executed in the
 // case of an event, and is configured from the command-line or from
 // a configuration file.
-type EventScript struct {
+type EventScript struct { // 运行脚本
 	EventFilter
 	Script string
 }

@@ -18,7 +18,7 @@ package agent
  commands will cause the client to subscribe to events, and those will be
  pushed down the socket as they are received. This provides a low-latency
  mechanism for applications to send and receive events, while also providing
- a flexible control mechanism for Serf.
+ a flexible control mechanism for Serf. // 通过ipc机制，实现了对serf的灵活控制
 */
 
 import (
@@ -1041,7 +1041,7 @@ func (i *AgentIPC) handleRespond(client *IPCClient, seq uint64) error {
 }
 
 // handleStats is used to get various statistics
-func (i *AgentIPC) handleStats(client *IPCClient, seq uint64) error {
+func (i *AgentIPC) handleStats(client *IPCClient, seq uint64) error { // 返回agent的相关状态
 	header := responseHeader{
 		Seq:   seq,
 		Error: "",

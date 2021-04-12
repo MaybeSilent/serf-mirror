@@ -13,6 +13,7 @@ import (
 // along the Serf channel.
 type EventType int
 
+// 在serf中发生的系统类型
 const (
 	EventMemberJoin EventType = iota
 	EventMemberLeave
@@ -52,8 +53,9 @@ type Event interface {
 	String() string
 }
 
+// serf节点变化所触发的事件，可能设计到多个节点
 // MemberEvent is the struct used for member related events
-// Because Serf coalesces events, an event may contain multiple members.
+// Because Serf coalesces events, an event may contain multiple members.、
 type MemberEvent struct {
 	Type    EventType
 	Members []Member

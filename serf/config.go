@@ -27,7 +27,7 @@ func init() {
 type Config struct {
 	// The name of this node. This must be unique in the cluster. If this
 	// is not set, Serf will set it to the hostname of the running machine.
-	NodeName string
+	NodeName string // 节点的名称
 
 	// The tags for this role, if any. This is used to provide arbitrary
 	// key/value metadata per-node. For example, a "role" tag may be used to

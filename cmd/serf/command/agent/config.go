@@ -20,7 +20,7 @@ import (
 const DefaultBindPort int = 7946
 
 // DefaultConfig contains the defaults for configurations.
-func DefaultConfig() *Config {
+func DefaultConfig() *Config { // agent的默认配置
 	return &Config{
 		DisableCoordinates:     false,
 		Tags:                   make(map[string]string),
@@ -30,7 +30,7 @@ func DefaultConfig() *Config {
 		RPCAddr:                "127.0.0.1:7373",
 		Protocol:               serf.ProtocolVersionMax,
 		ReplayOnJoin:           false,
-		Profile:                "lan",
+		Profile:                "lan", // local area network
 		RetryInterval:          30 * time.Second,
 		SyslogFacility:         "LOCAL0",
 		QueryResponseSizeLimit: 1024,
@@ -80,7 +80,7 @@ type Config struct {
 	// encoded. The easiest way to do this on Unix machines is this command:
 	// "head -c32 /dev/urandom | base64". If this is not specified, the
 	// traffic will not be encrypted.
-	EncryptKey string `mapstructure:"encrypt_key"`
+	EncryptKey string `mapstructure:"encrypt_key"` //
 
 	// KeyringFile is the path to a file containing a serialized keyring.
 	// The keyring is used to facilitate encryption. If left blank, the
@@ -149,7 +149,7 @@ type Config struct {
 	// agent will setup an mDNS responder and periodically run an mDNS query
 	// to look for peers. For peers on a network that supports multicast, this
 	// allows Serf agents to join each other with zero configuration.
-	Discover string `mapstructure:"discover"`
+	Discover string `mapstructure:"discover"` // 通过mdns来进行服务发现
 
 	// Interface is used to provide a binding interface to use. It can be
 	// used instead of providing a bind address, as Serf will discover the
@@ -569,11 +569,11 @@ func ReadConfigPaths(paths []string) (*Config, error) {
 }
 
 // Implement the sort interface for dirEnts
-func (d dirEnts) Len() int {
+func (d dirEnts) Len() int { // dirEnts 自定义type实现相关的Len,Less等函数
 	return len(d)
 }
 
-func (d dirEnts) Less(i, j int) bool {
+func (d dirEnts) Less(i, j int) bool { //
 	return d[i].Name() < d[j].Name()
 }
 

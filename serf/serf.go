@@ -34,7 +34,7 @@ const (
 const (
 	// Used to detect if the meta data is tags
 	// or if it is a raw role
-	tagMagicByte uint8 = 255
+	tagMagicByte uint8 = 255 // tagMap的标志位
 )
 
 const MaxNodeNameLength int = 128
@@ -69,11 +69,11 @@ type Serf struct {
 	queryClock LamportClock
 
 	broadcasts    *memberlist.TransmitLimitedQueue // serf的广播队列
-	config        *Config
+	config        *Config // serf节点的配置
 	failedMembers []*memberState
 	leftMembers   []*memberState
 	memberlist    *memberlist.Memberlist //
-	memberLock    sync.RWMutex
+	memberLock    sync.RWMutex //
 	members       map[string]*memberState // serf中的所有节点，包含了leave状态和fail状态的节点
 
 	// recentIntents the lamport time and type of intent for a given node in
@@ -134,7 +134,7 @@ func (s SerfState) String() string {
 }
 
 // Member is a single member of the Serf cluster.
-type Member struct {
+type Member struct {  // serf集群中的节点，包括了节点名称，节点地址，节点端口等信息
 	Name   string
 	Addr   net.IP
 	Port   uint16
@@ -153,11 +153,11 @@ type Member struct {
 }
 
 // MemberStatus is the state that a member is in.
-type MemberStatus int
+type MemberStatus int // serf集群中的节点状态
 
 const (
-	StatusNone MemberStatus = iota
-	StatusAlive
+	StatusNone MemberStatus = iota // 无状态
+	StatusAlive					   // 节点处于存活状态
 	StatusLeaving
 	StatusLeft
 	StatusFailed
@@ -916,6 +916,7 @@ func (s *Serf) broadcast(t messageType, msg interface{}, notify chan<- struct{})
 
 // handleNodeJoin is called when a node join event is received
 // from memberlist.
+// node join的时候触发该方法
 func (s *Serf) handleNodeJoin(n *memberlist.Node) {
 	s.memberLock.Lock()
 	defer s.memberLock.Unlock()
@@ -987,7 +988,7 @@ func (s *Serf) handleNodeJoin(n *memberlist.Node) {
 	s.logger.Printf("[INFO] serf: EventMemberJoin: %s %s",
 		member.Member.Name, member.Member.Addr)
 	if s.config.EventCh != nil {
-		s.config.EventCh <- MemberEvent{
+		s.config.EventCh <- MemberEvent{ // 触发memberJoin的事件，eventhandler
 			Type:    EventMemberJoin,
 			Members: []Member{member.Member},
 		}
@@ -1778,6 +1779,7 @@ func (s *Serf) handleRejoin(previous []*PreviousNode) {
 }
 
 // encodeTags is used to encode a tag map
+// 对tag map进行编码
 func (s *Serf) encodeTags(tags map[string]string) []byte {
 	// Support role-only backwards compatibility
 	if s.ProtocolVersion() < 3 {
@@ -1789,7 +1791,7 @@ func (s *Serf) encodeTags(tags map[string]string) []byte {
 	var buf bytes.Buffer
 	buf.WriteByte(tagMagicByte)
 	enc := codec.NewEncoder(&buf, &codec.MsgpackHandle{})
-	if err := enc.Encode(tags); err != nil {
+	if err := enc.Encode(tags); err != nil { // 进行编码
 		panic(fmt.Sprintf("Failed to encode tags: %v", err))
 	}
 	return buf.Bytes()
@@ -1800,7 +1802,7 @@ func (s *Serf) decodeTags(buf []byte) map[string]string {
 	tags := make(map[string]string)
 
 	// Backwards compatibility mode
-	if len(buf) == 0 || buf[0] != tagMagicByte {
+	if len(buf) == 0 || buf[0] != tagMagicByte { // tag
 		tags["role"] = string(buf)
 		return tags
 	}
@@ -1808,7 +1810,7 @@ func (s *Serf) decodeTags(buf []byte) map[string]string {
 	// Decode the tags
 	r := bytes.NewReader(buf[1:])
 	dec := codec.NewDecoder(r, &codec.MsgpackHandle{})
-	if err := dec.Decode(&tags); err != nil {
+	if err := dec.Decode(&tags); err != nil { // 进行解码
 		s.logger.Printf("[ERR] serf: Failed to decode tags: %v", err)
 	}
 	return tags
@@ -1823,7 +1825,7 @@ func (s *Serf) Stats() map[string]string {
 	members := toString(uint64(len(s.members)))
 	failed := toString(uint64(len(s.failedMembers)))
 	left := toString(uint64(len(s.leftMembers)))
-	health_score := toString(uint64(s.memberlist.GetHealthScore()))
+	health_score := toString(uint64(s.memberlist.GetHealthScore())) // 获取memberlist中自己的健康指数
 
 	s.memberLock.RUnlock()
 	stats := map[string]string{

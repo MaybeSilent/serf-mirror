@@ -39,7 +39,7 @@ var sanitizeTagRegexp = regexp.MustCompile(`[^A-Z0-9_]`)
 //
 // In all events, data is passed in via stdin to facilitate piping. See
 // the various stdin functions below for more information.
-func invokeEventScript(logger *log.Logger, script string, self serf.Member, event serf.Event) error {
+func invokeEventScript(logger *log.Logger, script string, self serf.Member, event serf.Event) error { // serf运行对应的脚本文件
 	defer metrics.MeasureSince([]string{"agent", "invoke", script}, time.Now())
 	output, _ := circbuf.NewBuffer(maxBufSize)
 
@@ -51,13 +51,13 @@ func invokeEventScript(logger *log.Logger, script string, self serf.Member, even
 	} else {
 		shell = "/bin/sh"
 		flag = "-c"
-	}
+	} // 判断windows还是linux
 
 	cmd := exec.Command(shell, flag, script)
 	cmd.Env = append(os.Environ(),
 		"SERF_EVENT="+event.EventType().String(),
 		"SERF_SELF_NAME="+self.Name,
-		"SERF_SELF_ROLE="+self.Tags["role"],
+		"SERF_SELF_ROLE="+self.Tags["role"], // 添加环境变量
 	)
 	cmd.Stderr = output
 	cmd.Stdout = output

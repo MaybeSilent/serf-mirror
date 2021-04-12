@@ -26,11 +26,11 @@ type Agent struct { // agent实例结构体
 	agentConf *Config
 
 	// eventCh is used for Serf to deliver events on
-	eventCh chan serf.Event
+	eventCh chan serf.Event // 接收event请求
 
 	// eventHandlers is the registered handlers for events
-	eventHandlers     map[EventHandler]struct{}
-	eventHandlerList  []EventHandler
+	eventHandlers     map[EventHandler]struct{} //eventHandler的map
+	eventHandlerList  []EventHandler 			//eventHandler的列表
 	eventHandlersLock sync.Mutex
 
 	// logger instance wraps the logOutput
@@ -266,7 +266,7 @@ func (a *Agent) eventLoop() {
 			a.Shutdown()
 			return
 
-		case <-a.shutdownCh: //
+		case <-a.shutdownCh: // agent关闭的channel
 			return
 		}
 	}
@@ -357,6 +357,7 @@ func (a *Agent) writeTagsFile(tags map[string]string) error {
 
 // MarshalTags is a utility function which takes a map of tag key/value pairs
 // and returns the same tags as strings in 'key=value' format.
+// 对tags进行marshal，直接使用fmt.Sprintf加append的形式
 func MarshalTags(tags map[string]string) []string {
 	var result []string
 	for name, value := range tags {
@@ -367,6 +368,7 @@ func MarshalTags(tags map[string]string) []string {
 
 // UnmarshalTags is a utility function which takes a slice of strings in
 // key=value format and returns them as a tag mapping.
+// 对tag的序列进行反序列化
 func UnmarshalTags(tags []string) (map[string]string, error) {
 	result := make(map[string]string)
 	for _, tag := range tags {
@@ -431,7 +433,7 @@ func (a *Agent) loadKeyringFile(keyringFile string) error {
 }
 
 // Stats is used to get various runtime information and stats
-func (a *Agent) Stats() map[string]map[string]string {
+func (a *Agent) Stats() map[string]map[string]string { //
 	local := a.serf.LocalMember()
 	event_handlers := make(map[string]string)
 
@@ -443,12 +445,12 @@ func (a *Agent) Stats() map[string]map[string]string {
 
 	output := map[string]map[string]string{
 		"agent": map[string]string{
-			"name": local.Name,
+			"name": local.Name, // 节点中serf实例名称
 		},
-		"runtime":        runtimeStats(),
-		"serf":           a.serf.Stats(),
+		"runtime":        runtimeStats(), // 返回运行时的状态
+		"serf":           a.serf.Stats(), // serf集群的状态
 		"tags":           local.Tags,
-		"event_handlers": event_handlers,
+		"event_handlers": event_handlers, // 展示为map
 	}
 	return output
 }

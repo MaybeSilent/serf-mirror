@@ -350,7 +350,7 @@ func (c *Command) setupAgent(config *Config, logOutput io.Writer) *Agent {
 
 	// Start Serf
 	c.Ui.Output("Starting Serf agent...")
-	agent, err := Create(config, serfConfig, logOutput)
+	agent, err := Create(config, serfConfig, logOutput) // 创建agent
 	if err != nil {
 		c.Ui.Error(fmt.Sprintf("Failed to setup the Serf agent: %v", err))
 		return nil
@@ -406,7 +406,7 @@ func (c *Command) setupLoggers(config *Config) (*GatedWriter, *logWriter, io.Wri
 func (c *Command) startAgent(config *Config, agent *Agent,
 	logWriter *logWriter, logOutput io.Writer) *AgentIPC {
 	// Add the script event handlers
-	c.scriptHandler = &ScriptEventHandler{
+	c.scriptHandler = &ScriptEventHandler{ // 设置脚本处理函数
 		SelfFunc: func() serf.Member { return agent.Serf().LocalMember() },
 		Scripts:  config.EventScripts(),
 		Logger:   log.New(logOutput, "", log.LstdFlags),

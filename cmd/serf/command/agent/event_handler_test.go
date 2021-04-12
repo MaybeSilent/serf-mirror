@@ -291,7 +291,7 @@ func TestEventScriptValid(t *testing.T) {
 	}
 }
 
-func TestParseEventScript(t *testing.T) {
+func TestParseEventScript(t *testing.T) { // event handler 的 parse 方法
 	testCases := []struct {
 		v       string
 		err     bool

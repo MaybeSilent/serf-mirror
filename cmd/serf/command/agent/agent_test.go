@@ -150,7 +150,7 @@ func TestAgentTagsFile(t *testing.T) {
 
 	testutil.Yield()
 
-	err = a1.SetTags(tags)
+	err = a1.SetTags(tags) // 给agent设置tag
 
 	if err != nil {
 		t.Fatalf("err: %v", err)
