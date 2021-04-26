@@ -28,9 +28,9 @@ type TransmitLimitedQueue struct {
 }
 
 type limitedBroadcast struct { // b树的索引
-	transmits int   // btree-key[0]: Number of transmissions attempted.
-	msgLen    int64 // btree-key[1]: copied from len(b.Message())
-	id        int64 // btree-key[2]: unique incrementing id stamped at submission time
+	transmits int   // btree-key[0]: Number of transmissions attempted. 				// 消息广播的次数
+	msgLen    int64 // btree-key[1]: copied from len(b.Message()) 						// 消息的长度
+	id        int64 // btree-key[2]: unique incrementing id stamped at submission time  // 消息id
 	b         Broadcast
 
 	name string // set if Broadcast is a NamedBroadcast
@@ -46,7 +46,7 @@ type limitedBroadcast struct { // b树的索引
 // - [transmits=0, ..., transmits=inf]
 // - [transmits=0:len=999, ..., transmits=0:len=2, ...]
 // - [transmits=0:len=999,id=999, ..., transmits=0:len=999:id=1, ...]
-func (b *limitedBroadcast) Less(than btree.Item) bool {
+func (b *limitedBroadcast) Less(than btree.Item) bool { // 实现了less方法，存储于b树之中
 	o := than.(*limitedBroadcast)
 	if b.transmits < o.transmits {
 		return true
@@ -81,6 +81,7 @@ func (q *TransmitLimitedQueue) orderedView(reverse bool) []*limitedBroadcast {
 //
 // This method panics if you attempt to mutate the item during traversal.  The
 // underlying btree should also not be mutated during traversal.
+// 实现了遍历b树的方法
 func (q *TransmitLimitedQueue) walkReadOnlyLocked(reverse bool, f func(*limitedBroadcast) bool) {
 	if q.lenLocked() == 0 {
 		return
@@ -141,7 +142,7 @@ type Broadcast interface {
 //
 // Invalidates() isn't currently used for NamedBroadcasts, but that may change
 // in the future.
-type NamedBroadcast interface {
+type NamedBroadcast interface { // 组合了Broadcast的实现
 	Broadcast
 	// The unique identity of this broadcast message. 唯一的标识名
 	Name() string

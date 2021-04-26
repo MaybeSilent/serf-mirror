@@ -89,7 +89,7 @@ type Config struct {
 
 	// LogLevel is the level of the logs to output.
 	// This can be updated during a reload.
-	LogLevel string `mapstructure:"log_level"`
+	LogLevel string `mapstructure:"log_level"` // serf输出的日志等级
 
 	// RPCAddr is the address and port to listen on for the agent's RPC
 	// interface.

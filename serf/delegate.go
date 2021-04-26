@@ -10,6 +10,7 @@ import (
 )
 
 // delegate is the memberlist.Delegate implementation that Serf uses.
+// 实现memberlist的Delegate接口方法
 type delegate struct {
 	serf *Serf
 }
@@ -33,15 +34,15 @@ func (d *delegate) NotifyMsg(buf []byte) {
 	metrics.AddSample([]string{"serf", "msgs", "received"}, float32(len(buf)))
 
 	rebroadcast := false
-	rebroadcastQueue := d.serf.broadcasts
+	rebroadcastQueue := d.serf.broadcasts // serf的广播队列
 	t := messageType(buf[0])
 
-	if d.serf.config.messageDropper(t) {
+	if d.serf.config.messageDropper(t) { // msg的过滤操作
 		return
 	}
 
 	switch t {
-	case messageLeaveType:
+	case messageLeaveType: // 节点的leave类型消息
 		var leave messageLeave
 		if err := decodeMessage(buf[1:], &leave); err != nil {
 			d.serf.logger.Printf("[ERR] serf: Error decoding leave message: %s", err)
@@ -50,8 +51,8 @@ func (d *delegate) NotifyMsg(buf []byte) {
 
 		d.serf.logger.Printf("[DEBUG] serf: messageLeaveType: %s", leave.Node)
 		rebroadcast = d.serf.handleNodeLeaveIntent(&leave)
-
-	case messageJoinType:
+		// 消息类型生效的情况下，触发rebroadcast
+	case messageJoinType: // 节点的join类型消息
 		var join messageJoin
 		if err := decodeMessage(buf[1:], &join); err != nil {
 			d.serf.logger.Printf("[ERR] serf: Error decoding join message: %s", err)

@@ -26,7 +26,7 @@ func (l *LamportClock) Increment() LamportTime {
 }
 
 // Witness is called to update our local clock if necessary after
-// witnessing a clock value received from another process
+// witnessing a clock value received from another process   // CAS更新
 func (l *LamportClock) Witness(v LamportTime) {
 WITNESS:
 	// If the other value is old, we do not need to do anything

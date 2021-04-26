@@ -43,7 +43,7 @@ func (c *userEventCoalescer) Coalesce(e Event) {
 }
 
 func (c *userEventCoalescer) Flush(outChan chan<- Event) {
-	for _, latest := range c.events {
+	for _, latest := range c.events { // 处理已经聚合的事件
 		for _, e := range latest.Events {
 			outChan <- e
 		}

@@ -389,10 +389,10 @@ func (c *Command) setupLoggers(config *Config) (*GatedWriter, *logWriter, io.Wri
 	}
 
 	// Create a log writer, and wrap a logOutput around it
-	logWriter := NewLogWriter(512)
+	logWriter := NewLogWriter(512) // logs的环形缓冲区
 	var logOutput io.Writer
 	if syslog != nil {
-		logOutput = io.MultiWriter(c.logFilter, logWriter, syslog)
+		logOutput = io.MultiWriter(c.logFilter, logWriter, syslog) // MultiWriter同时向多个Writer中输入日志等相关内容
 	} else {
 		logOutput = io.MultiWriter(c.logFilter, logWriter)
 	}

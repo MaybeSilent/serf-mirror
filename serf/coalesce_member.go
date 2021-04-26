@@ -1,17 +1,19 @@
 package serf
 
+// 成员聚合事件
 type coalesceEvent struct {
 	Type   EventType
 	Member *Member
 }
 
+// 事件聚合
 type memberEventCoalescer struct {
 	lastEvents   map[string]EventType
 	latestEvents map[string]coalesceEvent
 }
 
 func (c *memberEventCoalescer) Handle(e Event) bool {
-	switch e.EventType() {
+	switch e.EventType() { // 判断事件是否可以聚合
 	case EventMemberJoin:
 		return true
 	case EventMemberLeave:
@@ -27,6 +29,7 @@ func (c *memberEventCoalescer) Handle(e Event) bool {
 	}
 }
 
+// 聚合事件
 func (c *memberEventCoalescer) Coalesce(raw Event) {
 	e := raw.(MemberEvent)
 	for _, m := range e.Members {
@@ -37,6 +40,7 @@ func (c *memberEventCoalescer) Coalesce(raw Event) {
 	}
 }
 
+// 执行所有事件
 func (c *memberEventCoalescer) Flush(outCh chan<- Event) {
 	// Coalesce the various events we got into a single set of events.
 	events := make(map[EventType]*MemberEvent)

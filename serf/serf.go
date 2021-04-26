@@ -70,17 +70,18 @@ type Serf struct {
 
 	broadcasts    *memberlist.TransmitLimitedQueue // serf的广播队列
 	config        *Config // serf节点的配置
-	failedMembers []*memberState
-	leftMembers   []*memberState
+	failedMembers []*memberState // 处于fail状态的节点
+	leftMembers   []*memberState // 处于left状态的节点
 	memberlist    *memberlist.Memberlist //
-	memberLock    sync.RWMutex //
+	memberLock    sync.RWMutex // member的锁
 	members       map[string]*memberState // serf中的所有节点，包含了leave状态和fail状态的节点
 
 	// recentIntents the lamport time and type of intent for a given node in
 	// case we get an intent before the relevant memberlist event. This is
 	// indexed by node, and always store the latest lamport time / intent
 	// we've seen. The memberLock protects this structure.
-	recentIntents map[string]nodeIntent // 节点的lamport时钟map
+	// 操作前需要通过memberLock加锁，通过node来进行索引
+	recentIntents map[string]nodeIntent // 存储乱序的消息类型
 
 	eventBroadcasts *memberlist.TransmitLimitedQueue
 	eventBuffer     []*userEvents
@@ -197,7 +198,7 @@ type nodeIntent struct {
 
 	// WallTime is the wall clock time we saw this intent in order to
 	// expire it from the buffer.
-	WallTime time.Time
+	WallTime time.Time // 加入的事件
 
 	// LTime is the Lamport time, used for cluster-wide ordering of events.
 	LTime LamportTime
@@ -358,7 +359,7 @@ func Create(conf *Config) (*Serf, error) {
 		NumNodes:       serf.NumNodes,
 		RetransmitMult: conf.MemberlistConfig.RetransmitMult,
 	}
-	serf.eventBroadcasts = &memberlist.TransmitLimitedQueue{
+	serf.eventBroadcasts = &memberlist.TransmitLimitedQueue{ //
 		NumNodes:       serf.NumNodes,
 		RetransmitMult: conf.MemberlistConfig.RetransmitMult,
 	}
@@ -368,7 +369,7 @@ func Create(conf *Config) (*Serf, error) {
 	}
 
 	// Create the buffer for recent intents
-	serf.recentIntents = make(map[string]nodeIntent) // 节点的lamport时钟map
+	serf.recentIntents = make(map[string]nodeIntent) // 存储乱序的消息类型
 
 	// Create a buffer for events and queries
 	serf.eventBuffer = make([]*userEvents, conf.EventBuffer) // event与query的buff
@@ -941,13 +942,13 @@ func (s *Serf) handleNodeJoin(n *memberlist.Node) {
 
 		// Check if we have a join or leave intent. The intent buffer
 		// will only hold one event for this node, so the more recent
-		// one will take effect.
+		// one will take effect. // 检查队列中缓存的事件
 		if join, ok := recentIntent(s.recentIntents, n.Name, messageJoinType); ok {
-			member.statusLTime = join
+			member.statusLTime = join // status的time变为join的最新lamport时间戳
 		}
 		if leave, ok := recentIntent(s.recentIntents, n.Name, messageLeaveType); ok {
 			member.Status = StatusLeaving
-			member.statusLTime = leave
+			member.statusLTime = leave // leave消息的最新lamport时间戳
 		}
 
 		s.members[n.Name] = member
@@ -1092,27 +1093,28 @@ func (s *Serf) handleNodeUpdate(n *memberlist.Node) {
 func (s *Serf) handleNodeLeaveIntent(leaveMsg *messageLeave) bool { // 对leave事件
 
 	// Witness a potentially newer time
-	s.clock.Witness(leaveMsg.LTime)
+	s.clock.Witness(leaveMsg.LTime) // 更新lamport时间戳
 
 	s.memberLock.Lock()
 	defer s.memberLock.Unlock()
 
 	member, ok := s.members[leaveMsg.Node]
 	if !ok {
-		// Rebroadcast only if this was an update we hadn't seen before.
+		// Rebroadcast only if this was an update we hadn't seen before. // 存储乱序的消息
 		return upsertIntent(s.recentIntents, leaveMsg.Node, messageLeaveType, leaveMsg.LTime, time.Now)
 	}
 
 	// If the message is old, then it is irrelevant and we can skip it
 	if leaveMsg.LTime <= member.statusLTime {
-		return false
+		return false // false表示不再通知
 	}
 
 	// Refute us leaving if we are in the alive state
 	// Must be done in another goroutine since we have the memberLock
+	// 发现收到的离开消息是自己，会尝试反驳
 	if leaveMsg.Node == s.config.NodeName && s.state == SerfAlive {
 		s.logger.Printf("[DEBUG] serf: Refuting an older leave intent")
-		go s.broadcastJoin(s.clock.Time())
+		go s.broadcastJoin(s.clock.Time()) // 将自身的lamport节点时钟加1
 		return false
 	}
 
@@ -1131,14 +1133,14 @@ func (s *Serf) handleNodeLeaveIntent(leaveMsg *messageLeave) bool { // 对leave�
 	// This eventually leads to overflowing serf intent queues
 	// - https://github.com/hashicorp/consul/issues/8179
 	// - https://github.com/hashicorp/consul/issues/7960
-	member.statusLTime = leaveMsg.LTime
+	member.statusLTime = leaveMsg.LTime // 一直更新
 
 	// State transition depends on current state
 	switch member.Status {
 	case StatusAlive:
 		member.Status = StatusLeaving
 
-		if leaveMsg.Prune {
+		if leaveMsg.Prune { // 是否删除节点
 			s.handlePrune(member)
 		}
 		return true
@@ -1157,7 +1159,7 @@ func (s *Serf) handleNodeLeaveIntent(leaveMsg *messageLeave) bool { // 对leave�
 		// graceful leave.
 		s.logger.Printf("[INFO] serf: EventMemberLeave (forced): %s %s",
 			member.Member.Name, member.Member.Addr)
-		if s.config.EventCh != nil {
+		if s.config.EventCh != nil { // failed -> left状态，发送MemberEvent
 			s.config.EventCh <- MemberEvent{
 				Type:    EventMemberLeave,
 				Members: []Member{member.Member},
@@ -1184,6 +1186,7 @@ func (s *Serf) handleNodeLeaveIntent(leaveMsg *messageLeave) bool { // 对leave�
 // erases a member from the list of members
 func (s *Serf) handlePrune(member *memberState) {
 	if member.Status == StatusLeaving {
+		// 等待时间，等待gossip消息传输完成
 		time.Sleep(s.config.BroadcastTimeout + s.config.LeavePropagateDelay)
 	}
 
@@ -1209,7 +1212,7 @@ func (s *Serf) handleNodeJoinIntent(joinMsg *messageJoin) bool {
 	member, ok := s.members[joinMsg.Node]
 	if !ok {
 		// Rebroadcast only if this was an update we hadn't seen before.
-		// join的节点在节点列表中未找到，可能存在队列中
+		// join的节点在节点列表中未找到，先将消息暂存到队列中
 		return upsertIntent(s.recentIntents, joinMsg.Node, messageJoinType, joinMsg.LTime, time.Now)
 	}
 
@@ -1530,7 +1533,7 @@ func (s *Serf) eraseNode(m *memberState) {
 
 	// Tell the coordinate client the node has gone away and delete
 	// its cached coordinates.
-	if !s.config.DisableCoordinates {
+	if !s.config.DisableCoordinates { // 网络协调
 		s.coordClient.ForgetNode(m.Name) // 删除对应的节点
 
 		s.coordCacheLock.Lock()
@@ -1541,7 +1544,7 @@ func (s *Serf) eraseNode(m *memberState) {
 	// Send an event along
 	if s.config.EventCh != nil {
 		s.config.EventCh <- MemberEvent{ // 发送对应的event
-			Type:    EventMemberReap,
+			Type:    EventMemberReap, // 节点清楚event
 			Members: []Member{m.Member},
 		}
 	}
